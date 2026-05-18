@@ -1,0 +1,2983 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEWEB — Gestionnaire de Missions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root {
+            --blue:        #1a5490;
+            --blue-l:      #2270c0;
+            --blue-d:      #0d2e52;
+            --yellow:      #ffc800;
+            --yellow-l:    #ffd740;
+            --yellow-d:    #e6b400;
+            --bg:          #050b17;
+            --glass:       rgba(26,84,144,.14);
+            --glass-b:     rgba(255,200,0,.18);
+            --text:        #e8f0fe;
+            --dim:         #7a94b8;
+            --green:       #00e676;
+            --red:         #ff4757;
+            --cyan:        #00c8ff;
+        }
+
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #bg-wrap {
+            position: fixed; inset: 0; z-index: 0;
+            overflow: hidden; pointer-events: none;
+        }
+
+        .orb {
+            position: absolute; border-radius: 50%;
+            filter: blur(90px); opacity: .13;
+            animation: orbDrift 10s ease-in-out infinite;
+        }
+        .orb1 { width:600px;height:600px; background:var(--blue);   top:-15%;left:-12%;  animation-delay:0s; }
+        .orb2 { width:450px;height:450px; background:var(--yellow);  bottom:-10%;right:-8%; animation-delay:-4s; }
+        .orb3 { width:320px;height:320px; background:var(--cyan);    top:50%;left:40%;    animation-delay:-7s; }
+
+        @keyframes orbDrift {
+            0%,100% { transform:translate(0,0) scale(1); }
+            33%      { transform:translate(25px,-25px) scale(1.06); }
+            66%      { transform:translate(-18px,22px) scale(.94); }
+        }
+
+        .grid-lines {
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                linear-gradient(rgba(26,84,144,.045) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(26,84,144,.045) 1px, transparent 1px);
+            background-size: 52px 52px;
+        }
+
+        .particle {
+            position: fixed; border-radius: 50%;
+            pointer-events: none; z-index: 0;
+            opacity: 0;
+            animation: pFloat linear infinite;
+        }
+        @keyframes pFloat {
+            0%   { opacity:0; transform:translateY(110vh) rotate(0deg); }
+            8%   { opacity:.7; }
+            92%  { opacity:.7; }
+            100% { opacity:0; transform:translateY(-80px) rotate(720deg); }
+        }
+
+        .wrap {
+            position: relative; z-index: 1;
+            max-width: 1420px;
+            margin: 0 auto;
+            padding: 0 22px 60px;
+        }
+
+        header {
+            position: sticky; top: 0; z-index: 200;
+            background: rgba(5,11,23,.88);
+            backdrop-filter: blur(22px);
+            border-bottom: 1px solid var(--glass-b);
+            padding: 0 22px;
+        }
+
+        .h-inner {
+            max-width: 1420px; margin: 0 auto;
+            display: flex; align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            gap: 16px;
+        }
+
+        .logo { display:flex; align-items:center; gap:14px; text-decoration:none; }
+
+        .logo-icon {
+            width:52px; height:52px;
+            background: linear-gradient(135deg, var(--blue), var(--yellow));
+            border-radius: 14px;
+            display: flex; align-items:center; justify-content:center;
+            font-family: 'Orbitron', monospace; font-weight:900; font-size:17px;
+            color:#fff; letter-spacing:1px;
+            animation: logoGlow 3s ease-in-out infinite;
+            box-shadow: 0 0 22px rgba(26,84,144,.5);
+        }
+        @keyframes logoGlow {
+            0%,100% { box-shadow:0 0 22px rgba(26,84,144,.5); }
+            50%      { box-shadow:0 0 42px rgba(255,200,0,.5), 0 0 22px rgba(26,84,144,.4); }
+        }
+
+        .logo-text { display:flex; flex-direction:column; }
+
+        .logo-name {
+            font-family:'Orbitron',monospace; font-weight:900; font-size:26px;
+            letter-spacing:4px;
+            background: linear-gradient(135deg, var(--yellow), #fff 70%);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+            background-clip:text;
+        }
+
+        .logo-sub {
+            font-size:9px; color:var(--dim);
+            letter-spacing:3px; text-transform:uppercase;
+        }
+
+        .h-stats {
+            display:flex; gap:28px; align-items:center;
+        }
+
+        .h-stat { text-align:center; }
+
+        .h-stat-val {
+            font-family:'Orbitron',monospace; font-weight:700; font-size:22px;
+            color:var(--yellow);
+        }
+
+        .h-stat-lbl {
+            font-size:9px; color:var(--dim);
+            text-transform:uppercase; letter-spacing:1.5px;
+        }
+
+        .h-date {
+            font-size:11px; color:var(--dim);
+            font-family:'Rajdhani',sans-serif; letter-spacing:1px;
+            white-space:nowrap;
+        }
+
+        .sec-title {
+            font-family:'Orbitron',monospace; font-size:12px;
+            letter-spacing:3px; color:var(--yellow);
+            text-transform:uppercase; margin-bottom:22px;
+            display:flex; align-items:center; gap:14px;
+        }
+        .sec-title::before {
+            content:''; display:block; width:4px; height:22px;
+            background:linear-gradient(var(--blue),var(--yellow)); border-radius:2px;
+        }
+        .sec-title::after {
+            content:''; flex:1; height:1px;
+            background:linear-gradient(90deg, var(--glass-b), transparent);
+        }
+
+        .section { margin:34px 0; }
+
+        .kpi-grid {
+            display:grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px,1fr));
+            gap:20px;
+        }
+
+        .kpi {
+            background:var(--glass);
+            border:1px solid var(--glass-b);
+            border-radius:18px; padding:26px 22px;
+            position:relative; overflow:hidden;
+            cursor:default;
+            transition:transform .4s cubic-bezier(.175,.885,.32,1.275),
+                        border-color .3s, box-shadow .3s;
+            perspective:600px;
+        }
+
+        .kpi::before {
+            content:'';
+            position:absolute; top:0; left:0; right:0; height:2px;
+            background:linear-gradient(90deg,transparent,var(--yellow),transparent);
+            animation:scan 3.5s ease-in-out infinite;
+        }
+        @keyframes scan {
+            0%   { transform:translateX(-100%); }
+            100% { transform:translateX(100%); }
+        }
+
+        .kpi:hover {
+            transform:translateY(-10px) rotateX(6deg);
+            border-color:var(--yellow);
+            box-shadow:0 20px 55px rgba(0,0,0,.35), 0 0 30px rgba(255,200,0,.25);
+        }
+
+        .kpi-ico {
+            font-size:34px; margin-bottom:12px; display:block;
+            animation:ico-bob 2.2s ease-in-out infinite;
+        }
+        @keyframes ico-bob {
+            0%,100% { transform:translateY(0); }
+            50%      { transform:translateY(-7px); }
+        }
+
+        .kpi-val {
+            font-family:'Orbitron',monospace; font-size:44px; font-weight:900;
+            line-height:1; margin-bottom:8px;
+            background:linear-gradient(135deg,var(--yellow),#fff);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+            background-clip:text;
+        }
+
+        .kpi-lbl {
+            font-size:10px; color:var(--dim);
+            text-transform:uppercase; letter-spacing:1.8px;
+            font-family:'Rajdhani',sans-serif; font-weight:600;
+        }
+
+        .kpi-bar {
+            margin-top:14px; height:3px;
+            background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden;
+        }
+        .kpi-bar-fill {
+            height:100%;
+            background:linear-gradient(90deg, var(--blue), var(--yellow));
+            border-radius:2px; transition:width 1.2s ease;
+        }
+
+        .form-card {
+            background:var(--glass);
+            border:1px solid var(--glass-b);
+            border-radius:22px; padding:36px;
+            position:relative; overflow:hidden;
+        }
+
+        .form-card::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:3px;
+            background:linear-gradient(90deg, var(--blue), var(--yellow), var(--blue));
+            background-size:200% 100%;
+            animation:gradShift 4s linear infinite;
+        }
+        @keyframes gradShift {
+            0%   { background-position:0% 0%; }
+            100% { background-position:200% 0%; }
+        }
+
+        .form-grid {
+            display:grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px,1fr));
+            gap:20px; margin-bottom:22px;
+        }
+
+        .fg { position:relative; }
+        .fg-full { grid-column:1 / -1; }
+
+        .fg label {
+            display:block; font-size:10px; color:var(--yellow);
+            text-transform:uppercase; letter-spacing:1.8px;
+            margin-bottom:9px; font-family:'Rajdhani',sans-serif; font-weight:700;
+        }
+
+        .fc {
+            width:100%;
+            background:rgba(255,255,255,.05);
+            border:1px solid rgba(255,255,255,.1);
+            border-radius:11px; padding:13px 16px;
+            color:var(--text); font-size:14px;
+            font-family:'Inter',sans-serif;
+            transition:border-color .3s, box-shadow .3s, background .3s;
+            outline:none; appearance:none;
+        }
+
+        .fc:focus {
+            border-color:var(--yellow);
+            background:rgba(255,200,0,.06);
+            box-shadow:0 0 22px rgba(255,200,0,.18);
+        }
+
+        select.fc {
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23ffc800' d='M6 8 0 0h12z'/%3E%3C/svg%3E");
+            background-repeat:no-repeat;
+            background-position:right 14px center;
+            padding-right:38px; cursor:pointer;
+        }
+
+        select.fc option { background:#0d1f37; color:var(--text); }
+
+        .range-wrap {
+            display:flex; align-items:center; gap:16px; margin-top:4px;
+        }
+
+        input[type=range] {
+            flex:1; -webkit-appearance:none; appearance:none;
+            height:7px; border-radius:4px;
+            background:rgba(255,255,255,.1); outline:none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance:none; width:22px; height:22px;
+            background:linear-gradient(135deg,var(--blue),var(--yellow));
+            border-radius:50%; cursor:pointer;
+            box-shadow:0 0 12px rgba(255,200,0,.45);
+            transition:transform .2s, box-shadow .2s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform:scale(1.35);
+            box-shadow:0 0 22px rgba(255,200,0,.65);
+        }
+
+        .range-val {
+            min-width:56px; text-align:center;
+            font-family:'Orbitron',monospace; font-size:20px; font-weight:700;
+            color:var(--yellow);
+        }
+
+        .range-emoji { font-size:26px; }
+
+        .btn {
+            padding:13px 28px; border:none; border-radius:11px;
+            font-size:13px; font-weight:700; cursor:pointer;
+            transition:transform .3s cubic-bezier(.175,.885,.32,1.275),
+                        box-shadow .3s;
+            font-family:'Rajdhani',sans-serif;
+            letter-spacing:1.2px; text-transform:uppercase;
+            position:relative; overflow:hidden;
+        }
+        .btn::after {
+            content:''; position:absolute; inset:0;
+            background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);
+            opacity:0; transition:opacity .2s;
+        }
+        .btn:hover::after { opacity:1; }
+        .btn:hover { transform:translateY(-4px); }
+
+        .btn-blue {
+            background:linear-gradient(135deg,var(--blue-d),var(--blue-l));
+            color:#fff; box-shadow:0 4px 18px rgba(26,84,144,.4);
+        }
+        .btn-blue:hover { box-shadow:0 10px 32px rgba(26,84,144,.6); }
+
+        .btn-yellow {
+            background:linear-gradient(135deg,var(--yellow-d),var(--yellow-l));
+            color:#000; box-shadow:0 4px 18px rgba(255,200,0,.3);
+        }
+        .btn-yellow:hover { box-shadow:0 10px 32px rgba(255,200,0,.55); }
+
+        .btn-red {
+            background:linear-gradient(135deg,#a50000,#ef5350);
+            color:#fff;
+        }
+        .btn-red:hover { box-shadow:0 8px 22px rgba(239,83,80,.45); }
+
+        .btn-sm { padding:8px 16px; font-size:11px; }
+
+        .form-actions {
+            display:flex; gap:12px; justify-content:flex-end; flex-wrap:wrap;
+        }
+
+        .filters {
+            display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;
+        }
+
+        .fbtn {
+            padding:8px 20px; border-radius:24px;
+            border:1px solid var(--glass-b);
+            background:var(--glass); color:var(--dim);
+            font-size:11px; cursor:pointer;
+            transition:all .3s;
+            font-family:'Rajdhani',sans-serif; letter-spacing:1px; font-weight:600;
+        }
+        .fbtn.active, .fbtn:hover {
+            border-color:var(--yellow); color:var(--yellow);
+            background:rgba(255,200,0,.1);
+        }
+
+        .m-grid { display:grid; gap:16px; }
+
+        .mc {
+            background:var(--glass);
+            border:1px solid var(--glass-b);
+            border-radius:18px; padding:24px 26px;
+            position:relative; overflow:hidden;
+            transition:transform .4s cubic-bezier(.175,.885,.32,1.275),
+                        border-color .3s, box-shadow .3s;
+            animation:cardIn .45s ease both;
+        }
+        @keyframes cardIn {
+            from { opacity:0; transform:translateY(18px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+
+        .mc::before {
+            content:''; position:absolute; left:0; top:0;
+            width:5px; height:100%;
+            background:linear-gradient(180deg, var(--blue), var(--yellow));
+            border-radius:5px 0 0 5px;
+        }
+
+        .mc:hover {
+            transform:translateX(8px) scale(1.008);
+            border-color:rgba(255,200,0,.4);
+            box-shadow:-4px 0 30px rgba(26,84,144,.3), 6px 6px 24px rgba(0,0,0,.2);
+        }
+
+        .mc-head {
+            display:flex; justify-content:space-between;
+            align-items:flex-start; margin-bottom:14px;
+        }
+
+        .mc-type {
+            font-family:'Rajdhani',sans-serif; font-size:20px;
+            font-weight:700; color:#fff;
+        }
+
+        .mc-client {
+            font-size:11px; color:var(--yellow); letter-spacing:1px;
+            margin-top:3px;
+        }
+
+        .mc-status {
+            font-size:32px;
+            animation:sPulse 2.5s ease-in-out infinite;
+        }
+        @keyframes sPulse {
+            0%,100% { transform:scale(1); }
+            50%      { transform:scale(1.18); }
+        }
+
+        .mc-meta {
+            display:flex; gap:18px; margin-bottom:14px; flex-wrap:wrap;
+        }
+
+        .mc-meta-item {
+            display:flex; align-items:center; gap:6px;
+            font-size:12px; color:var(--dim);
+        }
+
+        .mc-prog-head {
+            display:flex; justify-content:space-between;
+            margin-bottom:7px; font-size:11px;
+        }
+
+        .mc-prog-lbl {
+            color:var(--dim); font-family:'Rajdhani',sans-serif;
+            letter-spacing:1px; font-weight:600;
+        }
+
+        .mc-prog-num {
+            font-family:'Orbitron',monospace; font-weight:700; font-size:13px;
+        }
+
+        .pbar {
+            height:9px; background:rgba(255,255,255,.07);
+            border-radius:5px; overflow:hidden; margin-bottom:16px;
+        }
+
+        .pfill {
+            height:100%; border-radius:5px;
+            position:relative; overflow:hidden;
+            transition:width 1.3s cubic-bezier(.25,.46,.45,.94);
+        }
+        .pfill::after {
+            content:''; position:absolute; inset:0;
+            background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);
+            animation:shine 2.4s ease-in-out infinite;
+        }
+        @keyframes shine {
+            0%   { transform:translateX(-100%); }
+            100% { transform:translateX(100%); }
+        }
+
+        .p-none { background:linear-gradient(90deg,#a50000,var(--red)); }
+        .p-low  { background:linear-gradient(90deg,var(--yellow-d),var(--yellow)); }
+        .p-mid  { background:linear-gradient(90deg,var(--blue),var(--blue-l)); }
+        .p-done { background:linear-gradient(90deg,var(--blue),var(--green)); }
+
+        .mc-actions {
+            display:flex; gap:9px; justify-content:flex-end;
+        }
+
+        .empty {
+            text-align:center; padding:70px 20px; color:var(--dim);
+        }
+        .empty-ico { font-size:72px; margin-bottom:18px; display:block; opacity:.45; }
+        .empty-txt {
+            font-family:'Rajdhani',sans-serif; font-size:16px;
+            letter-spacing:1px;
+        }
+
+        .overlay {
+            position:fixed; inset:0; z-index:1000;
+            background:rgba(0,0,0,.82);
+            backdrop-filter:blur(12px);
+            display:none; align-items:center; justify-content:center;
+            padding:20px;
+        }
+        .overlay.on { display:flex; }
+
+        .modal {
+            background:#08152a;
+            border:1px solid var(--glass-b);
+            border-radius:22px; padding:36px;
+            width:100%; max-width:720px;
+            max-height:90vh; overflow-y:auto;
+            position:relative;
+            animation:mIn .32s ease;
+        }
+        @keyframes mIn {
+            from { opacity:0; transform:scale(.9) translateY(18px); }
+            to   { opacity:1; transform:scale(1) translateY(0); }
+        }
+
+        .modal-title {
+            font-family:'Orbitron',monospace; font-size:15px;
+            color:var(--yellow); margin-bottom:26px;
+            display:flex; align-items:center; gap:10px;
+        }
+
+        .modal-close {
+            position:absolute; top:18px; right:18px;
+            background:rgba(255,255,255,.09); border:none; color:#fff;
+            width:34px; height:34px; border-radius:50%;
+            cursor:pointer; font-size:16px;
+            display:flex; align-items:center; justify-content:center;
+            transition:background .2s, transform .2s;
+        }
+        .modal-close:hover { background:rgba(255,50,50,.35); transform:rotate(90deg); }
+
+        #toast {
+            position:fixed; bottom:28px; right:28px; z-index:3000;
+            background:linear-gradient(135deg,var(--blue-d),var(--blue-l));
+            border:1px solid var(--yellow);
+            color:#fff; padding:14px 24px;
+            border-radius:11px; font-family:'Rajdhani',sans-serif;
+            font-size:14px; letter-spacing:1px;
+            box-shadow:0 12px 40px rgba(0,0,0,.45);
+            transform:translateX(220px); opacity:0;
+            transition:all .42s cubic-bezier(.175,.885,.32,1.275);
+        }
+        #toast.show { transform:translateX(0); opacity:1; }
+
+        ::-webkit-scrollbar { width:5px; }
+        ::-webkit-scrollbar-track { background:var(--bg); }
+        ::-webkit-scrollbar-thumb { background:var(--blue); border-radius:3px; }
+        ::-webkit-scrollbar-thumb:hover { background:var(--yellow); }
+
+        @media (max-width:860px) {
+            .h-stats { display:none; }
+            .logo-name { font-size:20px; }
+        }
+
+        @media (max-width:600px) {
+            .form-card { padding:20px 16px; }
+            .kpi-val { font-size:32px; }
+            .form-actions { flex-direction:column; }
+            .form-actions .btn { width:100%; text-align:center; }
+            .mc-actions { flex-direction:column; }
+            .mc-actions .btn { width:100%; text-align:center; }
+            .adv-grid { grid-template-columns: 1fr; }
+            .results-bar { flex-direction:column; align-items:flex-start; }
+        }
+
+        /* ── SEARCH BAR ──────────────────────────────────── */
+        .search-wrap { margin-bottom:14px; }
+
+        .search-box {
+            display:flex; align-items:center; gap:12px;
+            background:var(--glass);
+            border:1px solid var(--glass-b);
+            border-radius:14px; padding:4px 16px;
+            transition:border-color .3s, box-shadow .3s;
+        }
+        .search-box:focus-within {
+            border-color:var(--yellow);
+            box-shadow:0 0 24px rgba(255,200,0,.18);
+        }
+
+        .search-ico { font-size:18px; flex-shrink:0; }
+
+        .search-input {
+            flex:1; background:transparent; border:none; outline:none;
+            color:var(--text); font-family:'Inter',sans-serif; font-size:14px;
+            padding:11px 0;
+        }
+        .search-input::placeholder { color:var(--dim); }
+
+        .search-clear {
+            background:rgba(255,255,255,.08); border:none; color:var(--dim);
+            width:26px; height:26px; border-radius:50%; cursor:pointer;
+            font-size:12px; display:flex; align-items:center; justify-content:center;
+            transition:all .2s; opacity:0; pointer-events:none; flex-shrink:0;
+        }
+        .search-clear.vis { opacity:1; pointer-events:all; }
+        .search-clear:hover { background:rgba(255,50,50,.28); color:#fff; }
+
+        /* ── ADVANCED FILTERS PANEL ──────────────────────── */
+        .adv-panel {
+            background:var(--glass); border:1px solid var(--glass-b);
+            border-radius:16px; margin-bottom:16px; overflow:hidden;
+            transition:border-color .3s;
+        }
+        .adv-panel.has-filters { border-color:var(--yellow); }
+
+        .adv-head {
+            display:flex; align-items:center; gap:10px;
+            padding:14px 20px; cursor:pointer;
+            font-family:'Rajdhani',sans-serif; font-weight:700;
+            font-size:13px; letter-spacing:1px;
+            color:var(--dim); transition:color .25s;
+            user-select:none;
+        }
+        .adv-head:hover { color:var(--yellow); }
+
+        .adv-badge {
+            background:var(--yellow); color:#000;
+            border-radius:10px; padding:1px 9px;
+            font-size:10px; font-weight:900; display:none;
+        }
+        .adv-badge.vis { display:inline-block; }
+
+        .adv-arrow { margin-left:auto; font-size:11px; transition:transform .3s; }
+        .adv-panel.open .adv-arrow { transform:rotate(180deg); }
+
+        .adv-body {
+            max-height:0; overflow:hidden;
+            transition:max-height .42s cubic-bezier(.25,.46,.45,.94);
+            padding:0 20px;
+        }
+        .adv-panel.open .adv-body { max-height:520px; padding:0 20px 22px; }
+
+        .adv-grid {
+            display:grid;
+            grid-template-columns:repeat(auto-fit, minmax(200px,1fr));
+            gap:16px; margin-bottom:16px;
+        }
+
+        .adv-actions { display:flex; justify-content:flex-end; }
+
+        /* Range inside filter panel */
+        .fc-range {
+            width:100%; -webkit-appearance:none; appearance:none;
+            height:6px; border-radius:3px;
+            background:rgba(255,255,255,.1); outline:none; margin-top:6px;
+        }
+        .fc-range::-webkit-slider-thumb {
+            -webkit-appearance:none; width:18px; height:18px;
+            background:linear-gradient(135deg,var(--blue),var(--yellow));
+            border-radius:50%; cursor:pointer;
+            box-shadow:0 0 10px rgba(255,200,0,.4);
+            transition:transform .2s, box-shadow .2s;
+        }
+        .fc-range::-webkit-slider-thumb:hover {
+            transform:scale(1.3);
+            box-shadow:0 0 18px rgba(255,200,0,.6);
+        }
+
+        /* ── RESULTS BAR ─────────────────────────────────── */
+        .results-bar {
+            display:flex; align-items:center;
+            justify-content:space-between; flex-wrap:wrap;
+            gap:10px; margin-bottom:16px;
+        }
+
+        .results-count {
+            font-family:'Rajdhani',sans-serif; font-size:13px;
+            font-weight:700; letter-spacing:1px; color:var(--dim);
+        }
+        .results-count em {
+            font-style:normal;
+            font-family:'Orbitron',monospace; font-size:16px;
+            color:var(--yellow);
+        }
+
+        .filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:0; }
+
+        /* ── CHEF SECTION ────────────────────────────────── */
+        .chef-layout {
+            display:grid;
+            grid-template-columns:340px 1fr;
+            gap:20px; align-items:start;
+        }
+
+        .chef-grid {
+            display:grid;
+            grid-template-columns:repeat(auto-fill, minmax(240px,1fr));
+            gap:14px;
+        }
+
+        .chef-card {
+            background:var(--glass); border:1px solid var(--glass-b);
+            border-radius:16px; padding:18px 20px;
+            display:flex; align-items:center; gap:14px;
+            position:relative; overflow:hidden;
+            animation:cardIn .45s ease both;
+            transition:transform .35s cubic-bezier(.175,.885,.32,1.275),
+                        border-color .3s, box-shadow .3s;
+        }
+        .chef-card::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:2px;
+            background:linear-gradient(90deg, var(--blue), var(--yellow));
+        }
+        .chef-card::after {
+            content:''; position:absolute; top:0; left:0; right:0; height:2px;
+            background:linear-gradient(90deg,transparent,var(--yellow),transparent);
+            animation:scan 3.5s ease-in-out infinite;
+        }
+        .chef-card:hover {
+            transform:translateY(-8px) scale(1.01);
+            border-color:rgba(255,200,0,.45);
+            box-shadow:0 18px 44px rgba(0,0,0,.28), 0 0 24px rgba(255,200,0,.12);
+        }
+
+        .chef-avatar {
+            width:54px; height:54px; border-radius:50%; flex-shrink:0;
+            background:linear-gradient(135deg, var(--blue), var(--yellow));
+            display:flex; align-items:center; justify-content:center;
+            font-family:'Orbitron',monospace; font-weight:900; font-size:15px;
+            color:#fff; letter-spacing:1px;
+            box-shadow:0 0 20px rgba(26,84,144,.5);
+            animation:logoGlow 3.5s ease-in-out infinite;
+        }
+
+        .chef-info { flex:1; min-width:0; }
+
+        .chef-name {
+            font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px;
+            color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .chef-spec { font-size:11px; color:var(--yellow); letter-spacing:.8px; margin-top:2px; }
+        .chef-tel  { font-size:11px; color:var(--dim); margin-top:2px; }
+
+        .chef-miss {
+            display:inline-flex; align-items:center; gap:4px;
+            background:rgba(26,84,144,.3); border:1px solid rgba(26,84,144,.55);
+            border-radius:8px; padding:2px 10px;
+            font-size:10px; color:var(--cyan);
+            font-family:'Orbitron',monospace; font-weight:700;
+            margin-top:7px;
+        }
+
+        .chef-actions { display:flex; flex-direction:column; gap:7px; flex-shrink:0; }
+
+        .chef-empty {
+            grid-column:1/-1; text-align:center; padding:40px 20px;
+            color:var(--dim); font-family:'Rajdhani',sans-serif;
+            font-size:15px; letter-spacing:1px;
+        }
+
+        @media (max-width:900px) { .chef-layout { grid-template-columns:1fr; } }
+        @media (max-width:600px) { .chef-actions { flex-direction:row; } }
+
+        /* ── PDF REPORT ──────────────────────────────────── */
+        .kpi-actions {
+            margin-top:18px; display:flex;
+            justify-content:flex-end; gap:12px; flex-wrap:wrap;
+        }
+
+        .pdf-options { display:flex; flex-direction:column; gap:18px; }
+
+        .pdf-preview {
+            background:rgba(26,84,144,.12);
+            border:1px solid var(--glass-b);
+            border-radius:12px; padding:16px;
+        }
+        .pdf-preview-title {
+            font-family:'Rajdhani',sans-serif; font-weight:700;
+            color:var(--yellow); font-size:11px; letter-spacing:1.5px;
+            text-transform:uppercase; margin-bottom:10px;
+        }
+        .pdf-stat {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:5px 0; border-bottom:1px solid rgba(255,255,255,.06);
+            font-size:12px; color:var(--dim);
+            font-family:'Rajdhani',sans-serif; letter-spacing:.5px;
+        }
+        .pdf-stat:last-child { border-bottom:none; }
+        .pdf-stat strong {
+            font-family:'Orbitron',monospace; font-size:14px; color:var(--yellow);
+        }
+
+        .pdf-type-grid {
+            display:grid; grid-template-columns:repeat(2,1fr); gap:10px;
+            margin-bottom:4px;
+        }
+        .pdf-type-btn {
+            background:var(--glass); border:1px solid var(--glass-b);
+            border-radius:11px; padding:12px 10px;
+            color:var(--dim); cursor:pointer; text-align:center;
+            font-family:'Rajdhani',sans-serif; font-weight:700;
+            font-size:12px; letter-spacing:1px; transition:all .3s;
+        }
+        .pdf-type-btn:hover, .pdf-type-btn.active {
+            border-color:var(--yellow); color:var(--yellow);
+            background:rgba(255,200,0,.1);
+            box-shadow:0 0 16px rgba(255,200,0,.15);
+        }
+        .pdf-type-btn .pt-ico { font-size:20px; display:block; margin-bottom:4px; }
+
+        /* ── AUTH ─────────────────────────────────────── */
+        #authOverlay {
+            position:fixed; inset:0; z-index:9999;
+            background:radial-gradient(ellipse at 30% 40%,rgba(26,84,144,.35) 0%,transparent 60%),
+                        radial-gradient(ellipse at 70% 70%,rgba(255,200,0,.18) 0%,transparent 55%),
+                        var(--bg);
+            display:flex; align-items:center; justify-content:center;
+        }
+        #authOverlay.hidden { display:none; }
+        .auth-box {
+            width:460px; max-width:95vw;
+            background:rgba(10,20,45,.88);
+            border:1.5px solid rgba(26,84,144,.45);
+            border-radius:20px; padding:40px 36px 32px;
+            box-shadow:0 0 60px rgba(26,84,144,.3),0 0 120px rgba(0,0,0,.6);
+            backdrop-filter:blur(18px);
+        }
+        .auth-logo {
+            display:flex; align-items:center; gap:14px;
+            justify-content:center; margin-bottom:28px;
+        }
+        .auth-logo .logo-icon {
+            width:48px; height:48px; font-size:18px;
+        }
+        .auth-logo .logo-name { font-size:26px; }
+        .auth-logo .logo-sub  { font-size:11px; }
+        .auth-tabs {
+            display:flex; gap:4px; background:rgba(255,255,255,.04);
+            border-radius:10px; padding:4px; margin-bottom:28px;
+        }
+        .auth-tab {
+            flex:1; padding:9px; border:none; border-radius:8px;
+            background:transparent; color:var(--dim);
+            font-family:'Rajdhani',sans-serif; font-size:14px;
+            font-weight:700; letter-spacing:1px; cursor:pointer;
+            transition:all .25s;
+        }
+        .auth-tab.active {
+            background:var(--blue); color:#fff;
+            box-shadow:0 2px 12px rgba(26,84,144,.4);
+        }
+        .auth-panel { display:none; }
+        .auth-panel.active { display:block; }
+        .auth-field { margin-bottom:16px; }
+        .auth-field label {
+            display:block; font-size:12px; font-weight:700;
+            letter-spacing:.8px; color:var(--dim); margin-bottom:6px;
+        }
+        .auth-field input, .auth-field select {
+            width:100%; padding:11px 14px;
+            background:rgba(255,255,255,.06);
+            border:1.5px solid rgba(26,84,144,.4);
+            border-radius:10px; color:var(--text);
+            font-family:'Rajdhani',sans-serif; font-size:15px;
+            box-sizing:border-box; transition:border-color .2s;
+            outline:none;
+        }
+        .auth-field input:focus, .auth-field select:focus {
+            border-color:var(--yellow);
+        }
+        .auth-field select option { background:#0a1429; }
+        .auth-btn {
+            width:100%; padding:13px; border:none; border-radius:12px;
+            background:linear-gradient(135deg,var(--blue) 0%,var(--blue-l) 100%);
+            color:#fff; font-family:'Rajdhani',sans-serif; font-size:16px;
+            font-weight:700; letter-spacing:2px; cursor:pointer;
+            transition:all .3s; margin-top:8px;
+            box-shadow:0 4px 20px rgba(26,84,144,.4);
+        }
+        .auth-btn:hover {
+            background:linear-gradient(135deg,var(--yellow-d) 0%,var(--yellow) 100%);
+            color:#0a1429; box-shadow:0 4px 24px rgba(255,200,0,.35);
+            transform:translateY(-1px);
+        }
+        .auth-err {
+            background:rgba(255,71,87,.15); border:1px solid rgba(255,71,87,.4);
+            border-radius:8px; padding:9px 14px; color:#ff4757;
+            font-size:13px; margin-bottom:14px; display:none;
+        }
+        .auth-err.vis { display:block; }
+        .role-opts {
+            display:flex; gap:8px; flex-wrap:wrap;
+        }
+        .role-opt {
+            flex:1; min-width:90px; padding:10px 6px; border:2px solid rgba(26,84,144,.4);
+            border-radius:10px; cursor:pointer; text-align:center;
+            background:rgba(255,255,255,.03); transition:all .2s;
+        }
+        .role-opt:hover { border-color:var(--blue-l); }
+        .role-opt.sel { border-color:var(--yellow); background:rgba(255,200,0,.1); }
+        .role-opt .ro-ico { font-size:22px; display:block; margin-bottom:4px; }
+        .role-opt .ro-label {
+            font-size:12px; font-weight:700; letter-spacing:.8px; color:var(--dim);
+        }
+        .role-opt.sel .ro-label { color:var(--yellow); }
+        /* header user area */
+        .h-right {
+            display:flex; align-items:center; gap:14px;
+        }
+        .h-date-txt {
+            font-size:13px; color:var(--dim); letter-spacing:.5px;
+        }
+        .h-user {
+            display:flex; align-items:center; gap:10px;
+            background:rgba(26,84,144,.2); border:1px solid rgba(26,84,144,.4);
+            border-radius:30px; padding:6px 14px 6px 8px; cursor:default;
+        }
+        .h-avatar {
+            width:32px; height:32px; border-radius:50%;
+            background:linear-gradient(135deg,var(--blue) 0%,var(--blue-l) 100%);
+            display:flex; align-items:center; justify-content:center;
+            font-weight:700; font-size:13px; letter-spacing:1px;
+            color:#fff; flex-shrink:0;
+        }
+        .h-uname { font-size:13px; font-weight:700; color:var(--text); }
+        .h-role-badge {
+            font-size:10px; font-weight:700; letter-spacing:1px;
+            padding:2px 7px; border-radius:10px; color:#fff;
+        }
+        .h-role-badge.role-admin { background:#8b5cf6; }
+        .h-role-badge.role-chef  { background:var(--blue); }
+        .h-role-badge.role-dir   { background:#06b6d4; }
+        .h-logout {
+            padding:6px 14px; border:1.5px solid rgba(255,71,87,.45);
+            border-radius:20px; background:transparent;
+            color:#ff4757; font-family:'Rajdhani',sans-serif;
+            font-size:12px; font-weight:700; letter-spacing:1px;
+            cursor:pointer; transition:all .25s;
+        }
+        .h-logout:hover {
+            background:rgba(255,71,87,.15);
+            box-shadow:0 0 12px rgba(255,71,87,.2);
+        }
+        /* role-based visibility */
+        .role-hide { display:none !important; }
+
+        /* ── EMAIL NOTIFICATIONS ────────────────────────── */
+        .notif-grid {
+            display:grid; grid-template-columns:1fr 1fr; gap:20px;
+        }
+        @media(max-width:720px){ .notif-grid { grid-template-columns:1fr; } }
+        .notif-email-row {
+            grid-column:1/-1; display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;
+        }
+        .notif-email-row .fc { flex:1; min-width:200px; }
+        .notif-checks {
+            display:flex; flex-direction:column; gap:14px;
+            padding:20px; background:rgba(255,255,255,.03);
+            border:1px solid rgba(26,84,144,.25); border-radius:14px;
+        }
+        .notif-checks-title {
+            font-size:11px; font-weight:700; letter-spacing:1px;
+            color:var(--dim); margin-bottom:4px;
+        }
+        .notif-check-item {
+            display:flex; align-items:flex-start; gap:12px; cursor:pointer;
+        }
+        .notif-check-item input[type=checkbox] {
+            width:17px; height:17px; margin-top:2px;
+            accent-color:var(--yellow); cursor:pointer; flex-shrink:0;
+        }
+        .notif-check-lbl { font-size:14px; font-weight:600; color:var(--text); }
+        .notif-check-desc { font-size:11px; color:var(--dim); margin-top:2px; }
+        .notif-manual-row {
+            grid-column:1/-1; display:flex; gap:10px; flex-wrap:wrap;
+            padding:16px 20px; background:rgba(255,200,0,.04);
+            border:1px solid rgba(255,200,0,.15); border-radius:14px;
+        }
+        .notif-manual-row .btn { flex:1; min-width:140px; }
+        /* Email log */
+        .email-log-head {
+            display:flex; justify-content:space-between; align-items:center;
+            margin-bottom:14px;
+        }
+        .email-log-title {
+            font-size:13px; font-weight:700; letter-spacing:1px; color:var(--dim);
+        }
+        .email-log-empty {
+            text-align:center; color:var(--dim); font-size:13px;
+            padding:28px; background:rgba(255,255,255,.02);
+            border:1px dashed rgba(26,84,144,.3); border-radius:12px;
+        }
+        .email-log-list { display:flex; flex-direction:column; gap:10px; }
+        .email-log-item {
+            display:flex; align-items:center; gap:14px;
+            background:rgba(255,255,255,.03);
+            border:1px solid rgba(26,84,144,.2);
+            border-radius:12px; padding:12px 16px;
+            animation:cardIn .35s both;
+        }
+        .email-log-ico { font-size:22px; flex-shrink:0; }
+        .email-log-info { flex:1; min-width:0; }
+        .email-log-subj {
+            font-size:13px; font-weight:700; color:var(--text);
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .email-log-meta { font-size:11px; color:var(--dim); margin-top:2px; }
+        .email-log-btns { display:flex; gap:6px; flex-shrink:0; }
+        /* Email preview modal */
+        #emailPreviewOverlay .modal {
+            max-width:700px; max-height:92vh;
+            display:flex; flex-direction:column;
+        }
+        .ep-frame-wrap {
+            flex:1; overflow-y:auto; background:#f0f4f8;
+            border-radius:10px; margin:14px 0; min-height:300px;
+        }
+        .ep-frame-wrap iframe {
+            width:100%; border:none; min-height:480px; border-radius:10px;
+        }
+        .ep-actions { display:flex; gap:12px; justify-content:flex-end; flex-shrink:0; }
+    </style>
+</head>
+<body>
+
+<!-- ── AUTH OVERLAY ─────────────────────────────────────── -->
+<div id="authOverlay">
+    <div class="auth-box">
+        <div class="auth-logo">
+            <div class="logo-icon">DW</div>
+            <div class="logo-text">
+                <span class="logo-name">DEWEB</span>
+                <span class="logo-sub">Gestionnaire de Missions</span>
+            </div>
+        </div>
+        <div class="auth-tabs">
+            <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">🔐 Connexion</button>
+            <button class="auth-tab"        id="tabReg"   onclick="switchAuthTab('reg')">📝 Inscription</button>
+        </div>
+
+        <!-- LOGIN -->
+        <div class="auth-panel active" id="panelLogin">
+            <div class="auth-err" id="loginErr"></div>
+            <div class="auth-field">
+                <label>📧 EMAIL</label>
+                <input type="email" id="loginEmail" placeholder="votre@email.com" autocomplete="username">
+            </div>
+            <div class="auth-field">
+                <label>🔑 MOT DE PASSE</label>
+                <input type="password" id="loginPwd" placeholder="••••••••" autocomplete="current-password">
+            </div>
+            <button class="auth-btn" onclick="doLogin()">SE CONNECTER →</button>
+        </div>
+
+        <!-- REGISTER -->
+        <div class="auth-panel" id="panelReg">
+            <div class="auth-err" id="regErr"></div>
+            <div class="auth-field">
+                <label>👤 NOM COMPLET</label>
+                <input type="text" id="regName" placeholder="Prénom NOM" autocomplete="off">
+            </div>
+            <div class="auth-field">
+                <label>📧 EMAIL</label>
+                <input type="email" id="regEmail" placeholder="votre@email.com" autocomplete="off">
+            </div>
+            <div class="auth-field">
+                <label>🔑 MOT DE PASSE</label>
+                <input type="password" id="regPwd" placeholder="••••••••" autocomplete="new-password">
+            </div>
+            <div class="auth-field">
+                <label>🔑 CONFIRMER MOT DE PASSE</label>
+                <input type="password" id="regPwd2" placeholder="••••••••" autocomplete="new-password">
+            </div>
+            <div class="auth-field">
+                <label>🎭 RÔLE</label>
+                <div class="role-opts">
+                    <div class="role-opt sel" data-role="Admin" onclick="selectRole(this)">
+                        <span class="ro-ico">👑</span>
+                        <span class="ro-label">ADMIN</span>
+                    </div>
+                    <div class="role-opt" data-role="Chef" onclick="selectRole(this)">
+                        <span class="ro-ico">👷</span>
+                        <span class="ro-label">CHEF</span>
+                    </div>
+                    <div class="role-opt" data-role="Directeur" onclick="selectRole(this)">
+                        <span class="ro-ico">📊</span>
+                        <span class="ro-label">DIRECTEUR</span>
+                    </div>
+                </div>
+            </div>
+            <button class="auth-btn" onclick="doRegister()">CRÉER LE COMPTE →</button>
+        </div>
+    </div>
+</div>
+
+<div id="bg-wrap">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+</div>
+<div class="grid-lines"></div>
+
+<header>
+    <div class="h-inner">
+        <div class="logo">
+            <div class="logo-icon">DW</div>
+            <div class="logo-text">
+                <span class="logo-name">DEWEB</span>
+                <span class="logo-sub">Gestionnaire de Missions</span>
+            </div>
+        </div>
+        <div class="h-stats">
+            <div class="h-stat">
+                <div class="h-stat-val" id="hTotal">0</div>
+                <div class="h-stat-lbl">Missions</div>
+            </div>
+            <div class="h-stat">
+                <div class="h-stat-val" id="hDone">0</div>
+                <div class="h-stat-lbl">Terminées</div>
+            </div>
+            <div class="h-stat">
+                <div class="h-stat-val" id="hAvg">0%</div>
+                <div class="h-stat-lbl">Avancement</div>
+            </div>
+        </div>
+        <div class="h-right" id="hRight">
+            <div class="h-date-txt" id="hDate"></div>
+            <div class="h-user" id="hUserBox">
+                <div class="h-avatar" id="hAvatar">?</div>
+                <div>
+                    <div class="h-uname" id="hUname">—</div>
+                    <div class="h-role-badge" id="hRoleBadge">—</div>
+                </div>
+            </div>
+            <button class="h-logout" onclick="doLogout()">⏻ Déconnexion</button>
+        </div>
+    </div>
+</header>
+
+<div class="wrap">
+
+    <div class="section">
+        <div class="sec-title">📊 Dashboard Directeur</div>
+        <div class="kpi-grid">
+            <div class="kpi">
+                <span class="kpi-ico">🎯</span>
+                <div class="kpi-val" id="kTotal">0</div>
+                <div class="kpi-lbl">Total Missions</div>
+                <div class="kpi-bar"><div class="kpi-bar-fill" id="bTotal" style="width:100%"></div></div>
+            </div>
+            <div class="kpi">
+                <span class="kpi-ico">✅</span>
+                <div class="kpi-val" id="kDone">0</div>
+                <div class="kpi-lbl">Terminées</div>
+                <div class="kpi-bar"><div class="kpi-bar-fill" id="bDone" style="width:0%"></div></div>
+            </div>
+            <div class="kpi">
+                <span class="kpi-ico">🔄</span>
+                <div class="kpi-val" id="kProg">0</div>
+                <div class="kpi-lbl">En Cours</div>
+                <div class="kpi-bar"><div class="kpi-bar-fill" id="bProg" style="width:0%"></div></div>
+            </div>
+            <div class="kpi">
+                <span class="kpi-ico">❌</span>
+                <div class="kpi-val" id="kPend">0</div>
+                <div class="kpi-lbl">Non Commencées</div>
+                <div class="kpi-bar"><div class="kpi-bar-fill" id="bPend" style="width:0%"></div></div>
+            </div>
+            <div class="kpi">
+                <span class="kpi-ico">📈</span>
+                <div class="kpi-val" id="kAvg">0%</div>
+                <div class="kpi-lbl">Avancement Moyen</div>
+                <div class="kpi-bar"><div class="kpi-bar-fill" id="bAvg" style="width:0%"></div></div>
+            </div>
+        </div>
+        <div class="kpi-actions">
+            <button class="btn btn-yellow" id="pdfBtn">📄 Générer Rapport PDF</button>
+        </div>
+    </div>
+
+    <div class="section" id="addMissionSection">
+        <div class="sec-title">➕ Nouvelle Mission</div>
+        <div class="form-card">
+            <form id="addForm" autocomplete="off">
+                <div class="form-grid">
+                    <div class="fg">
+                        <label>👷 Chef de Chantier</label>
+                        <select class="fc" name="chef" id="addChefSel" required>
+                            <option value="">— Sélectionner —</option>
+                        </select>
+                    </div>
+                    <div class="fg">
+                        <label>🏢 Client</label>
+                        <select class="fc" name="client" required>
+                            <option value="">— Sélectionner —</option>
+                            <option>DHL CASA CMM</option>
+                            <option>DHIEE MOUBAREK</option>
+                            <option>INTERTHIDIM</option>
+                            <option>VILLA CHAREAOUI</option>
+                        </select>
+                    </div>
+                    <div class="fg">
+                        <label>⚡ Type de Mission</label>
+                        <select class="fc" name="type" required>
+                            <option value="">— Sélectionner —</option>
+                            <option>Tirage câble</option>
+                            <option>Brassage</option>
+                            <option>Entretien</option>
+                            <option>Déplacement</option>
+                        </select>
+                    </div>
+                    <div class="fg">
+                        <label>📅 Date</label>
+                        <input type="date" class="fc" name="date" id="addDate" required>
+                    </div>
+                    <div class="fg fg-full">
+                        <label>📝 Description</label>
+                        <input type="text" class="fc" name="description" placeholder="Description détaillée de la mission…">
+                    </div>
+                    <div class="fg fg-full">
+                        <label>📊 Avancement Initial</label>
+                        <div class="range-wrap">
+                            <input type="range" name="avancement" min="0" max="100" value="0" id="addRange">
+                            <div class="range-val" id="addRangeVal">0%</div>
+                            <div class="range-emoji" id="addRangeEmoji">❌</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-blue" id="resetBtn">🔄 Réinitialiser</button>
+                    <button type="submit" class="btn btn-yellow">✅ Ajouter Mission</button>
+                    <button type="button" class="btn btn-blue" id="exportBtn">📥 Exporter CSV</button>
+                    <button type="button" class="btn btn-blue" id="importBtn">📤 Importer CSV</button>
+                    <input type="file" id="fileInput" accept=".csv" style="display:none;">
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── GESTION DES CHEFS ─────────────────────────── -->
+    <div class="section" id="chefSection">
+        <div class="sec-title">👷 Gestion des Chefs</div>
+        <div class="chef-layout">
+
+            <!-- Add chef form -->
+            <div class="form-card">
+                <form id="chefForm" autocomplete="off">
+                    <div class="form-grid">
+                        <div class="fg fg-full">
+                            <label>👷 Nom Complet</label>
+                            <input type="text" class="fc" name="name" required
+                                   placeholder="Ex: AHMED BENALI"
+                                   style="text-transform:uppercase">
+                        </div>
+                        <div class="fg fg-full">
+                            <label>🔧 Spécialité / Fonction</label>
+                            <input type="text" class="fc" name="specialite"
+                                   placeholder="Ex: Chef de Chantier">
+                        </div>
+                        <div class="fg fg-full">
+                            <label>📱 Téléphone <span style="color:var(--dim);font-size:9px">(optionnel)</span></label>
+                            <input type="tel" class="fc" name="tel"
+                                   placeholder="Ex: 0612345678">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-yellow">➕ Ajouter Chef</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Chef list -->
+            <div class="chef-grid" id="chefList"></div>
+        </div>
+    </div>
+
+    <!-- ── NOTIFICATIONS EMAIL ──────────────────────── -->
+    <div class="section" id="notifSection">
+        <div class="sec-title">📧 Paramètres de Notifications</div>
+        <div class="form-card">
+            <div class="notif-grid">
+
+                <!-- Email address + save -->
+                <div class="notif-email-row">
+                    <div class="fg" style="margin:0;flex:1;min-width:200px">
+                        <label>📧 Email de destination</label>
+                        <input type="email" class="fc" id="notifEmail" placeholder="votre@email.com">
+                    </div>
+                    <button class="btn btn-yellow" onclick="saveNotifSettings()">💾 Sauvegarder</button>
+                    <button class="btn btn-blue"   onclick="sendTestEmail()">🧪 Email de test</button>
+                </div>
+
+                <!-- Triggers column -->
+                <div class="notif-checks">
+                    <div class="notif-checks-title">⚡ DÉCLENCHEURS AUTOMATIQUES</div>
+                    <label class="notif-check-item">
+                        <input type="checkbox" id="nOnAdd">
+                        <div>
+                            <div class="notif-check-lbl">✅ Mission ajoutée</div>
+                            <div class="notif-check-desc">Notifier dès qu'une nouvelle mission est créée</div>
+                        </div>
+                    </label>
+                    <label class="notif-check-item">
+                        <input type="checkbox" id="nOnEdit">
+                        <div>
+                            <div class="notif-check-lbl">✏️ Mission modifiée</div>
+                            <div class="notif-check-desc">Notifier lors de toute mise à jour d'une mission</div>
+                        </div>
+                    </label>
+                    <label class="notif-check-item">
+                        <input type="checkbox" id="nOnDone">
+                        <div>
+                            <div class="notif-check-lbl">🏁 Mission terminée (100%)</div>
+                            <div class="notif-check-desc">Alerte spéciale dès qu'une mission est complétée</div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Reports column -->
+                <div class="notif-checks">
+                    <div class="notif-checks-title">📅 RAPPORTS & ALERTES</div>
+                    <label class="notif-check-item">
+                        <input type="checkbox" id="nDaily">
+                        <div>
+                            <div class="notif-check-lbl">📊 Rapport quotidien</div>
+                            <div class="notif-check-desc">Résumé journalier avec KPIs et missions critiques</div>
+                        </div>
+                    </label>
+                    <label class="notif-check-item">
+                        <input type="checkbox" id="nWeekly">
+                        <div>
+                            <div class="notif-check-lbl">📈 Rapport hebdomadaire</div>
+                            <div class="notif-check-desc">Bilan complet avec tableau de toutes les missions</div>
+                        </div>
+                    </label>
+                    <label class="notif-check-item">
+                        <input type="checkbox" id="nOverdue">
+                        <div>
+                            <div class="notif-check-lbl">⏰ Alerte missions en retard</div>
+                            <div class="notif-check-desc">Missions non démarrées depuis plus de 3 jours</div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Manual send row -->
+                <div class="notif-manual-row">
+                    <span style="font-size:12px;font-weight:700;letter-spacing:1px;color:var(--yellow);align-self:center;flex-shrink:0">📨 ENVOI MANUEL:</span>
+                    <button class="btn btn-blue" onclick="sendDailyReport()">📊 Rapport du jour</button>
+                    <button class="btn btn-blue" onclick="sendWeeklyReport()">📈 Rapport semaine</button>
+                    <button class="btn btn-blue" onclick="checkOverdue()">⏰ Vérifier retards</button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Email history -->
+        <div style="margin-top:22px">
+            <div class="email-log-head">
+                <div class="email-log-title">📬 HISTORIQUE DES EMAILS SIMULÉS</div>
+                <button class="btn btn-blue btn-sm" onclick="clearEmailLog()">🗑️ Effacer tout</button>
+            </div>
+            <div id="emailLogContainer"></div>
+        </div>
+    </div>
+
+    <!-- ── LISTE DES MISSIONS ────────────────────────── -->
+    <div class="section">
+        <div class="sec-title">📋 Liste des Missions</div>
+
+        <!-- Search bar -->
+        <div class="search-wrap">
+            <div class="search-box">
+                <span class="search-ico">🔍</span>
+                <input type="text" id="searchInput" class="search-input"
+                       placeholder="Rechercher par chef, client, type ou description…">
+                <button class="search-clear" id="searchClear" title="Effacer la recherche">✕</button>
+            </div>
+        </div>
+
+        <!-- Advanced filters panel -->
+        <div class="adv-panel" id="advPanel">
+            <div class="adv-head" id="advToggle">
+                <span>⚙️</span>
+                <span>Filtres Avancés</span>
+                <span class="adv-badge" id="advBadge">0</span>
+                <span class="adv-arrow">▼</span>
+            </div>
+            <div class="adv-body">
+                <div class="adv-grid">
+
+                    <div class="fg">
+                        <label>👷 Chef de Chantier</label>
+                        <select class="fc" id="fChef">
+                            <option value="">Tous les chefs</option>
+                            <option>DRISS MOUBAREK</option>
+                            <option>LEHCEN BERKA</option>
+                            <option>ABDELGHANI</option>
+                            <option>MOHAMED</option>
+                        </select>
+                    </div>
+
+                    <div class="fg">
+                        <label>🏢 Client</label>
+                        <select class="fc" id="fClient">
+                            <option value="">Tous les clients</option>
+                            <option>DHL CASA CMM</option>
+                            <option>DHIEE MOUBAREK</option>
+                            <option>INTERTHIDIM</option>
+                            <option>VILLA CHAREAOUI</option>
+                        </select>
+                    </div>
+
+                    <div class="fg">
+                        <label>⚡ Type de Mission</label>
+                        <select class="fc" id="fType">
+                            <option value="">Tous les types</option>
+                            <option>Tirage câble</option>
+                            <option>Brassage</option>
+                            <option>Entretien</option>
+                            <option>Déplacement</option>
+                        </select>
+                    </div>
+
+                    <div class="fg">
+                        <label>📅 Date de</label>
+                        <input type="date" class="fc" id="fDateFrom">
+                    </div>
+
+                    <div class="fg">
+                        <label>📅 Date jusqu'à</label>
+                        <input type="date" class="fc" id="fDateTo">
+                    </div>
+
+                    <div class="fg">
+                        <label>📊 Avancement Min: <span id="fAvMinLbl">0%</span></label>
+                        <input type="range" class="fc-range" id="fAvMin" min="0" max="100" value="0">
+                    </div>
+
+                    <div class="fg">
+                        <label>📊 Avancement Max: <span id="fAvMaxLbl">100%</span></label>
+                        <input type="range" class="fc-range" id="fAvMax" min="0" max="100" value="100">
+                    </div>
+
+                </div>
+                <div class="adv-actions">
+                    <button class="btn btn-blue btn-sm" id="resetFilters">🔄 Réinitialiser tous les filtres</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results count + quick status filters -->
+        <div class="results-bar">
+            <div class="results-count" id="resultsCount">
+                <em id="resultsNum">0</em> résultat(s)
+            </div>
+            <div class="filters">
+                <button class="fbtn active" data-f="all">🌐 Toutes</button>
+                <button class="fbtn" data-f="done">✅ Terminées</button>
+                <button class="fbtn" data-f="prog">🔄 En Cours</button>
+                <button class="fbtn" data-f="pend">❌ Non Commencées</button>
+            </div>
+        </div>
+
+        <div class="m-grid" id="mList"></div>
+    </div>
+
+</div>
+
+<div class="overlay" id="editOverlay">
+    <div class="modal">
+        <button class="modal-close" id="mClose">✕</button>
+        <div class="modal-title">✏️ Modifier la Mission</div>
+        <form id="editForm" autocomplete="off">
+            <input type="hidden" name="id">
+            <div class="form-grid">
+                <div class="fg">
+                    <label>👷 Chef de Chantier</label>
+                    <select class="fc" name="chef" id="editChefSel">
+                    </select>
+                </div>
+                <div class="fg">
+                    <label>🏢 Client</label>
+                    <select class="fc" name="client">
+                        <option>DHL CASA CMM</option>
+                        <option>DHIEE MOUBAREK</option>
+                        <option>INTERTHIDIM</option>
+                        <option>VILLA CHAREAOUI</option>
+                    </select>
+                </div>
+                <div class="fg">
+                    <label>⚡ Type de Mission</label>
+                    <select class="fc" name="type">
+                        <option>Tirage câble</option>
+                        <option>Brassage</option>
+                        <option>Entretien</option>
+                        <option>Déplacement</option>
+                    </select>
+                </div>
+                <div class="fg">
+                    <label>📅 Date</label>
+                    <input type="date" class="fc" name="date">
+                </div>
+                <div class="fg fg-full">
+                    <label>📝 Description</label>
+                    <input type="text" class="fc" name="description">
+                </div>
+                <div class="fg fg-full">
+                    <label>📊 Avancement</label>
+                    <div class="range-wrap">
+                        <input type="range" name="avancement" min="0" max="100" value="0" id="editRange">
+                        <div class="range-val" id="editRangeVal">0%</div>
+                        <div class="range-emoji" id="editRangeEmoji">❌</div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-blue" id="mCancel">Annuler</button>
+                <button type="submit" class="btn btn-yellow">💾 Sauvegarder</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── PDF REPORT MODAL ──────────────────────────────────── -->
+<div class="overlay" id="pdfOverlay">
+    <div class="modal" style="max-width:520px">
+        <button class="modal-close" id="pdfClose">✕</button>
+        <div class="modal-title">📄 Générer Rapport PDF</div>
+        <div class="pdf-options">
+
+            <!-- Report type buttons -->
+            <div class="fg">
+                <label>📊 Type de Rapport</label>
+                <div class="pdf-type-grid">
+                    <button type="button" class="pdf-type-btn active" data-type="all">
+                        <span class="pt-ico">🌐</span>Toutes les Missions
+                    </button>
+                    <button type="button" class="pdf-type-btn" data-type="chef">
+                        <span class="pt-ico">👷</span>Par Chef
+                    </button>
+                    <button type="button" class="pdf-type-btn" data-type="client">
+                        <span class="pt-ico">🏢</span>Par Client
+                    </button>
+                    <button type="button" class="pdf-type-btn" data-type="week">
+                        <span class="pt-ico">📅</span>Cette Semaine
+                    </button>
+                </div>
+            </div>
+
+            <!-- Conditional: Chef selector -->
+            <div class="fg" id="pdfChefGroup" style="display:none">
+                <label>👷 Sélectionner le Chef</label>
+                <select class="fc" id="pdfChefSel"></select>
+            </div>
+
+            <!-- Conditional: Client selector -->
+            <div class="fg" id="pdfClientGroup" style="display:none">
+                <label>🏢 Sélectionner le Client</label>
+                <select class="fc" id="pdfClientSel">
+                    <option>DHL CASA CMM</option>
+                    <option>DHIEE MOUBAREK</option>
+                    <option>INTERTHIDIM</option>
+                    <option>VILLA CHAREAOUI</option>
+                </select>
+            </div>
+
+            <!-- Preview stats -->
+            <div class="pdf-preview" id="pdfPreview">
+                <div class="pdf-preview-title">📊 Aperçu du Rapport</div>
+                <div class="pdf-stat"><span>Chargement…</span></div>
+            </div>
+        </div>
+
+        <div class="form-actions" style="margin-top:22px">
+            <button class="btn btn-blue" id="pdfCancel">Annuler</button>
+            <button class="btn btn-yellow" id="pdfGenerate">📄 Générer &amp; Télécharger PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── CHEF EDIT MODAL ────────────────────────────────────── -->
+<div class="overlay" id="chefEditOverlay">
+    <div class="modal">
+        <button class="modal-close" id="chefMClose">✕</button>
+        <div class="modal-title">✏️ Modifier le Chef</div>
+        <form id="chefEditForm" autocomplete="off">
+            <input type="hidden" name="id">
+            <div class="form-grid">
+                <div class="fg fg-full">
+                    <label>👷 Nom Complet</label>
+                    <input type="text" class="fc" name="name" required
+                           style="text-transform:uppercase"
+                           placeholder="Nom complet en majuscules">
+                </div>
+                <div class="fg">
+                    <label>🔧 Spécialité / Fonction</label>
+                    <input type="text" class="fc" name="specialite"
+                           placeholder="Ex: Chef de Chantier">
+                </div>
+                <div class="fg">
+                    <label>📱 Téléphone</label>
+                    <input type="tel" class="fc" name="tel"
+                           placeholder="Ex: 0612345678">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-blue" id="chefMCancel">Annuler</button>
+                <button type="submit" class="btn btn-yellow">💾 Sauvegarder</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── EMAIL PREVIEW MODAL ─────────────────────────────── -->
+<div class="overlay" id="emailPreviewOverlay">
+    <div class="modal" style="max-width:700px;max-height:92vh;display:flex;flex-direction:column">
+        <button class="modal-close" id="epClose">✕</button>
+        <div class="modal-title">👁️ Aperçu Email — <span id="epTitle" style="font-size:14px;color:var(--dim)"></span></div>
+        <div class="ep-frame-wrap">
+            <iframe id="epFrame" title="Aperçu email"></iframe>
+        </div>
+        <div class="ep-actions">
+            <button class="btn btn-blue" id="epCancel">Fermer</button>
+            <button class="btn btn-yellow" id="epSend">📨 Envoyer (Simulation)</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+let missions = JSON.parse(localStorage.getItem('dw_missions') || '[]');
+let currentUser = null;
+
+const filters = {
+    status: 'all',
+    search: '',
+    chef: '', client: '', type: '',
+    dateFrom: '', dateTo: '',
+    avMin: 0, avMax: 100
+};
+
+function applyFilters() {
+    const kw = filters.search.toLowerCase();
+    return missions.filter(m => {
+        const av = +m.av;
+        if (filters.status === 'done' && av !== 100) return false;
+        if (filters.status === 'prog' && (av === 0 || av === 100)) return false;
+        if (filters.status === 'pend' && av !== 0) return false;
+        if (kw && ![m.chef, m.client, m.type, m.desc || '']
+                .some(f => f.toLowerCase().includes(kw))) return false;
+        if (filters.chef   && m.chef   !== filters.chef)   return false;
+        if (filters.client && m.client !== filters.client) return false;
+        if (filters.type   && m.type   !== filters.type)   return false;
+        if (filters.dateFrom && m.date && m.date < filters.dateFrom) return false;
+        if (filters.dateTo   && m.date && m.date > filters.dateTo)   return false;
+        if (av < filters.avMin || av > filters.avMax) return false;
+        return true;
+    });
+}
+
+const save = () => localStorage.setItem('dw_missions', JSON.stringify(missions));
+
+function statusOf(pct) {
+    pct = +pct;
+    if (pct === 0)   return { emoji:'❌', label:'Non commencé',   color:'#ff4757', cls:'p-none' };
+    if (pct < 50)    return { emoji:'⏳', label:'En cours',        color:'#ffc800', cls:'p-low'  };
+    if (pct < 100)   return { emoji:'🔄', label:'En avancement',  color:'#00c8ff', cls:'p-mid'  };
+    return              { emoji:'✅', label:'Terminé',           color:'#00e676', cls:'p-done' };
+}
+
+function updateKPIs() {
+    const n   = missions.length;
+    const done = missions.filter(m => +m.av === 100).length;
+    const prog = missions.filter(m => +m.av > 0 && +m.av < 100).length;
+    const pend = missions.filter(m => +m.av === 0).length;
+    const avg  = n ? Math.round(missions.reduce((s,m)=>s+(+m.av),0)/n) : 0;
+
+    countTo('kTotal', n);
+    countTo('kDone',  done);
+    countTo('kProg',  prog);
+    countTo('kPend',  pend);
+
+    $('kAvg').textContent = avg + '%';
+    bar('bDone', n ? done/n*100 : 0);
+    bar('bProg', n ? prog/n*100 : 0);
+    bar('bPend', n ? pend/n*100 : 0);
+    bar('bAvg',  avg);
+
+    $('hTotal').textContent = n;
+    $('hDone').textContent  = done;
+    $('hAvg').textContent   = avg + '%';
+}
+
+function bar(id, pct) { $(id).style.width = pct + '%'; }
+
+function countTo(id, target) {
+    const el = $(id);
+    const from = parseInt(el.textContent) || 0;
+    const diff = target - from, steps = 22;
+    let i = 0;
+    const t = setInterval(() => {
+        el.textContent = Math.round(from + diff * (++i / steps));
+        if (i >= steps) clearInterval(t);
+    }, 28);
+}
+
+function render() {
+    const shown = applyFilters();
+    const list  = $('mList');
+
+    // Results count
+    $('resultsNum').textContent = shown.length;
+
+    // Active-filters badge
+    const activeCount = [
+        filters.search,
+        filters.chef, filters.client, filters.type,
+        filters.dateFrom, filters.dateTo,
+        filters.avMin > 0   ? '1' : '',
+        filters.avMax < 100 ? '1' : ''
+    ].filter(Boolean).length;
+    const badge = $('advBadge');
+    badge.textContent = activeCount;
+    badge.classList.toggle('vis', activeCount > 0);
+    $('advPanel').classList.toggle('has-filters', activeCount > 0);
+
+    if (!shown.length) {
+        list.innerHTML = `
+            <div class="empty">
+                <span class="empty-ico">${missions.length ? '🔍' : '🚀'}</span>
+                <div class="empty-txt">${missions.length
+                    ? 'Aucun résultat — modifiez vos filtres.'
+                    : 'Aucune mission — ajoutez votre première mission!'}</div>
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = shown.map((m, i) => {
+        const s = statusOf(m.av);
+        return `
+        <div class="mc" style="animation-delay:${i*.055}s">
+            <div class="mc-head">
+                <div>
+                    <div class="mc-type">⚡ ${esc(m.type)}</div>
+                    <div class="mc-client">🏢 ${esc(m.client)}</div>
+                </div>
+                <div class="mc-status">${s.emoji}</div>
+            </div>
+            <div class="mc-meta">
+                <div class="mc-meta-item">👷 <span>${esc(m.chef)}</span></div>
+                <div class="mc-meta-item">📅 <span>${fmtDate(m.date)}</span></div>
+                ${m.desc ? `<div class="mc-meta-item">📝 <span>${esc(m.desc)}</span></div>` : ''}
+                <div class="mc-meta-item" style="color:${s.color};font-weight:600">
+                    ${s.label}
+                </div>
+            </div>
+            <div class="mc-prog-head">
+                <span class="mc-prog-lbl">Avancement</span>
+                <span class="mc-prog-num" style="color:${s.color}">${m.av}%</span>
+            </div>
+            <div class="pbar">
+                <div class="pfill ${s.cls}" style="width:${m.av}%"></div>
+            </div>
+            <div class="mc-actions" id="mc-act-${m.id}">
+                ${canEditMission(m) ? `<button class="btn btn-blue btn-sm" onclick="openEdit('${m.id}')">✏️ Modifier</button>` : ''}
+                ${canEditMission(m) ? `<button class="btn btn-red btn-sm" onclick="delMission('${m.id}')">🗑️ Supprimer</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+$('addForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    missions.unshift({
+        id:   Date.now().toString(),
+        chef: fd.get('chef'),
+        client: fd.get('client'),
+        type: fd.get('type'),
+        desc: fd.get('description'),
+        date: fd.get('date'),
+        av:   +fd.get('avancement')
+    });
+    save(); updateKPIs(); render();
+    triggerEmail('add', missions[0]);
+    e.target.reset();
+    $('addDate').value = today();
+    $('addRangeVal').textContent = '0%';
+    $('addRangeEmoji').textContent = '❌';
+    $('addRange').value = 0;
+    toast('✅ Mission ajoutée avec succès!');
+});
+
+$('resetBtn').onclick = () => {
+    $('addForm').reset();
+    $('addDate').value = today();
+    $('addRangeVal').textContent = '0%';
+    $('addRangeEmoji').textContent = '❌';
+};
+
+$('addRange').addEventListener('input', function() {
+    const v = +this.value;
+    $('addRangeVal').textContent = v + '%';
+    $('addRangeEmoji').textContent = statusOf(v).emoji;
+});
+
+function canEditMission(m) {
+    if (!currentUser) return false;
+    if (currentUser.role === 'Admin') return true;
+    if (currentUser.role === 'Chef') return m.chef === currentUser.name;
+    return false; // Directeur: read-only
+}
+
+function delMission(id) {
+    const m = missions.find(x => x.id === id);
+    if (!m || !canEditMission(m)) { toast('⛔ Permission refusée.'); return; }
+    if (!confirm('Supprimer cette mission définitivement?')) return;
+    missions = missions.filter(x => x.id !== id);
+    save(); updateKPIs(); render();
+    toast('🗑️ Mission supprimée.');
+}
+
+function openEdit(id) {
+    const m = missions.find(m => m.id === id);
+    if (!m) return;
+    if (!canEditMission(m)) { toast('⛔ Permission refusée.'); return; }
+    const f = $('editForm');
+    f.querySelector('[name=id]').value = m.id;
+    f.querySelector('[name=chef]').value = m.chef;
+    f.querySelector('[name=client]').value = m.client;
+    f.querySelector('[name=type]').value = m.type;
+    f.querySelector('[name=description]').value = m.desc || '';
+    f.querySelector('[name=date]').value = m.date;
+    f.querySelector('[name=avancement]').value = m.av;
+    $('editRangeVal').textContent = m.av + '%';
+    $('editRangeEmoji').textContent = statusOf(m.av).emoji;
+    $('editRange').value = m.av;
+    $('editOverlay').classList.add('on');
+}
+
+const closeModal = () => $('editOverlay').classList.remove('on');
+$('mClose').onclick = closeModal;
+$('mCancel').onclick = closeModal;
+$('editOverlay').onclick = e => { if (e.target === $('editOverlay')) closeModal(); };
+
+$('editRange').addEventListener('input', function() {
+    const v = +this.value;
+    $('editRangeVal').textContent = v + '%';
+    $('editRangeEmoji').textContent = statusOf(v).emoji;
+});
+
+$('editForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const id = fd.get('id');
+    const idx = missions.findIndex(m => m.id === id);
+    if (idx < 0) return;
+    const prevMission = { ...missions[idx] };
+    missions[idx] = {
+        ...missions[idx],
+        chef: fd.get('chef'),
+        client: fd.get('client'),
+        type: fd.get('type'),
+        desc: fd.get('description'),
+        date: fd.get('date'),
+        av: +fd.get('avancement')
+    };
+    save(); closeModal(); updateKPIs(); render();
+    toast('💾 Mission mise à jour!');
+    const updated = missions[idx];
+    if (+updated.av === 100 && +prevMission.av < 100) {
+        triggerEmail('done', updated);
+    } else {
+        triggerEmail('edit', { m: updated, prev: prevMission });
+    }
+});
+
+document.querySelectorAll('.fbtn').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        filters.status = btn.dataset.f;
+        render();
+    };
+});
+
+function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ── SEARCH & ADVANCED FILTERS ────────────────────────────────
+$('searchInput').addEventListener('input', function() {
+    filters.search = this.value.trim();
+    $('searchClear').classList.toggle('vis', filters.search.length > 0);
+    render();
+});
+
+$('searchClear').onclick = () => {
+    $('searchInput').value = '';
+    filters.search = '';
+    $('searchClear').classList.remove('vis');
+    render();
+};
+
+$('fChef').addEventListener('change',   function() { filters.chef   = this.value; render(); });
+$('fClient').addEventListener('change', function() { filters.client = this.value; render(); });
+$('fType').addEventListener('change',   function() { filters.type   = this.value; render(); });
+
+$('fDateFrom').addEventListener('change', function() { filters.dateFrom = this.value; render(); });
+$('fDateTo').addEventListener('change',   function() { filters.dateTo   = this.value; render(); });
+
+$('fAvMin').addEventListener('input', function() {
+    if (+this.value > +$('fAvMax').value) this.value = $('fAvMax').value;
+    filters.avMin = +this.value;
+    $('fAvMinLbl').textContent = this.value + '%';
+    render();
+});
+$('fAvMax').addEventListener('input', function() {
+    if (+this.value < +$('fAvMin').value) this.value = $('fAvMin').value;
+    filters.avMax = +this.value;
+    $('fAvMaxLbl').textContent = this.value + '%';
+    render();
+});
+
+$('advToggle').onclick = () => $('advPanel').classList.toggle('open');
+
+$('resetFilters').onclick = () => {
+    filters.search = ''; filters.chef = ''; filters.client = '';
+    filters.type = ''; filters.dateFrom = ''; filters.dateTo = '';
+    filters.avMin = 0; filters.avMax = 100; filters.status = 'all';
+
+    $('searchInput').value = '';
+    $('searchClear').classList.remove('vis');
+    $('fChef').value = ''; $('fClient').value = ''; $('fType').value = '';
+    $('fDateFrom').value = ''; $('fDateTo').value = '';
+    $('fAvMin').value = 0;  $('fAvMinLbl').textContent = '0%';
+    $('fAvMax').value = 100; $('fAvMaxLbl').textContent = '100%';
+
+    document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.fbtn[data-f="all"]').classList.add('active');
+
+    render();
+    toast('🔄 Filtres réinitialisés!');
+};
+
+// EXPORT CSV
+$('exportBtn').onclick = () => {
+    if (!missions.length) {
+       toast('❌ Aucune mission à exporter!');
+        return;
+    }
+    
+    const headers = ['Date', 'Chef', 'Client', 'Type', 'Description', 'Avancement%'];
+    const rows = missions.map(m => [
+        m.date || '',
+        m.chef || '',
+        m.client || '',
+        m.type || '',
+        m.desc || '',
+        m.av || '0'
+    ]);
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `missions_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    
+    toast('✅ CSV exporté avec succès!');
+};
+
+// IMPORT CSV
+$('importBtn').onclick = () => {
+    $('fileInput').click();
+};
+
+$('fileInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = event => {
+        try {
+            const csv = event.target.result;
+            const lines = csv.trim().split('\n');
+            
+            if (lines.length < 2) {
+                toast('❌ Fichier CSV vide!');
+                return;
+            }
+            
+            const imported = [];
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                if (cols.length >= 5) {
+                    imported.push({
+                        id: Date.now().toString() + i,
+                        date: cols[0] || '',
+                        chef: cols[1] || '',
+                        client: cols[2] || '',
+                        type: cols[3] || '',
+                        desc: cols[4] || '',
+                        av: parseInt(cols[5]) || 0
+                    });
+                }
+            }
+            
+            if (!imported.length) {
+                toast('❌ Aucune mission trouvée dans le CSV!');
+                return;
+            }
+            
+            missions = [...imported, ...missions];
+            save();
+            updateKPIs();
+            render();
+            
+            toast(`✅ ${imported.length} mission(s) importée(s)!`);
+            $('fileInput').value = '';
+        } catch (err) {
+            toast('❌ Erreur lors de l\'import du CSV!');
+            console.error(err);
+        }
+    };
+    reader.readAsText(file);
+});
+
+// ── PDF REPORT ────────────────────────────────────────────────
+let pdfReportType = 'all';
+
+function openPdfModal() {
+    // Populate chef selector from dynamic chefs list
+    $('pdfChefSel').innerHTML = chefs.map(c =>
+        `<option value="${esc(c.name)}">${esc(c.name)}</option>`
+    ).join('');
+    pdfReportType = 'all';
+    document.querySelectorAll('.pdf-type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.pdf-type-btn[data-type="all"]').classList.add('active');
+    $('pdfChefGroup').style.display   = 'none';
+    $('pdfClientGroup').style.display = 'none';
+    updatePdfPreview();
+    $('pdfOverlay').classList.add('on');
+}
+
+function updatePdfPreview() {
+    let filtered = getMissionsByType();
+    const n    = filtered.length;
+    const done = filtered.filter(m => +m.av === 100).length;
+    const prog = filtered.filter(m => +m.av > 0 && +m.av < 100).length;
+    const pend = filtered.filter(m => +m.av === 0).length;
+    const avg  = n ? Math.round(filtered.reduce((s,m)=>s+(+m.av),0)/n) : 0;
+    $('pdfPreview').innerHTML = `
+        <div class="pdf-preview-title">📊 Aperçu du Rapport</div>
+        <div class="pdf-stat"><span>Missions incluses</span><strong>${n}</strong></div>
+        <div class="pdf-stat"><span>✅ Terminées</span><strong>${done}</strong></div>
+        <div class="pdf-stat"><span>🔄 En cours</span><strong>${prog}</strong></div>
+        <div class="pdf-stat"><span>❌ Non commencées</span><strong>${pend}</strong></div>
+        <div class="pdf-stat"><span>📈 Avancement moyen</span><strong>${avg}%</strong></div>`;
+}
+
+function getMissionsByType() {
+    if (pdfReportType === 'chef') {
+        const ch = $('pdfChefSel').value;
+        return ch ? missions.filter(m => m.chef === ch) : missions;
+    }
+    if (pdfReportType === 'client') {
+        const cl = $('pdfClientSel').value;
+        return cl ? missions.filter(m => m.client === cl) : missions;
+    }
+    if (pdfReportType === 'week') {
+        const d = new Date(); d.setDate(d.getDate() - 7);
+        const lim = d.toISOString().slice(0, 10);
+        return missions.filter(m => m.date && m.date >= lim);
+    }
+    return [...missions];
+}
+
+// PDF type buttons
+document.querySelectorAll('.pdf-type-btn').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.pdf-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        pdfReportType = btn.dataset.type;
+        $('pdfChefGroup').style.display   = pdfReportType === 'chef'   ? 'block' : 'none';
+        $('pdfClientGroup').style.display = pdfReportType === 'client' ? 'block' : 'none';
+        updatePdfPreview();
+    };
+});
+
+$('pdfChefSel').addEventListener('change', updatePdfPreview);
+$('pdfClientSel').addEventListener('change', updatePdfPreview);
+
+$('pdfBtn').onclick = openPdfModal;
+
+const closePdfModal = () => $('pdfOverlay').classList.remove('on');
+$('pdfClose').onclick   = closePdfModal;
+$('pdfCancel').onclick  = closePdfModal;
+$('pdfOverlay').onclick = e => { if (e.target === $('pdfOverlay')) closePdfModal(); };
+
+$('pdfGenerate').onclick = () => {
+    if (!window.jspdf) { toast('❌ jsPDF non chargé — vérifiez votre connexion!'); return; }
+    generatePDF();
+};
+
+function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+    const filtered = getMissionsByType();
+    const typeLabels = { all:'Rapport Complet', week:'Rapport Hebdomadaire',
+                         chef:`Chef: ${$('pdfChefSel').value || '—'}`,
+                         client:`Client: ${$('pdfClientSel').value || '—'}` };
+    const subtitle = typeLabels[pdfReportType] || 'Rapport Complet';
+
+    const W = 210, margin = 14, contentW = 210 - 28;
+    let y = 0;
+
+    // ── HEADER ──────────────────────────────────────────
+    doc.setFillColor(26, 84, 144);
+    doc.rect(0, 0, W, 44, 'F');
+    doc.setFillColor(13, 46, 82);
+    doc.rect(0, 38, W, 6, 'F');
+    doc.setFillColor(255, 200, 0);
+    doc.rect(0, 0, 6, 44, 'F');
+
+    doc.setTextColor(255, 200, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(30);
+    doc.text('DEWEB', margin + 3, 18);
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('Rapport des Missions', margin + 3, 28);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(170, 205, 255);
+    doc.text(subtitle, margin + 3, 36);
+
+    const dateStr = new Date().toLocaleDateString('fr-FR',
+        { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    doc.setTextColor(210, 230, 255);
+    doc.setFontSize(7.5);
+    doc.text(dateStr, W - margin, 18, { align:'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(255, 200, 0);
+    doc.text(`${filtered.length} mission(s)`, W - margin, 28, { align:'right' });
+
+    y = 52;
+
+    // ── KPI BOXES ───────────────────────────────────────
+    const n    = filtered.length;
+    const done = filtered.filter(m => +m.av === 100).length;
+    const prog = filtered.filter(m => +m.av > 0 && +m.av < 100).length;
+    const pend = filtered.filter(m => +m.av === 0).length;
+    const avg  = n ? Math.round(filtered.reduce((s,m)=>s+(+m.av),0)/n) : 0;
+
+    const kpis = [
+        { label:'TOTAL',        value:n,    r:26,  g:84,  b:144 },
+        { label:'TERMINÉES',    value:done, r:0,   g:155, b:85  },
+        { label:'EN COURS',     value:prog, r:0,   g:140, b:195 },
+        { label:'EN ATTENTE',   value:pend, r:195, g:55,  b:55  },
+    ];
+    const kw = (contentW - 9) / 4;
+    kpis.forEach((k, i) => {
+        const bx = margin + i * (kw + 3);
+        doc.setFillColor(k.r, k.g, k.b);
+        doc.roundedRect(bx, y, kw, 22, 2.5, 2.5, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.text(String(k.value), bx + kw/2, y + 13, { align:'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(210, 230, 255);
+        doc.text(k.label, bx + kw/2, y + 19, { align:'center' });
+    });
+    y += 26;
+
+    // Avg moyen band
+    doc.setFillColor(255, 200, 0);
+    doc.roundedRect(margin, y, contentW, 11, 2, 2, 'F');
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(`AVANCEMENT MOYEN GLOBAL : ${avg}%`, W/2, y + 7.5, { align:'center' });
+    y += 16;
+
+    // ── STATUS BAR CHART ────────────────────────────────
+    if (n > 0) {
+        doc.setFillColor(235, 242, 255);
+        doc.setDrawColor(200, 215, 240);
+        doc.roundedRect(margin, y, contentW, 30, 2.5, 2.5, 'FD');
+
+        doc.setTextColor(26, 84, 144);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('RÉPARTITION PAR STATUT', margin + 4, y + 6.5);
+
+        const bx = margin + 4, bw = contentW - 8;
+        const by = y + 10, bh = 8;
+        doc.setFillColor(205, 218, 238);
+        doc.roundedRect(bx, by, bw, bh, 2, 2, 'F');
+
+        const segs = [
+            { count:done, r:0,   g:155, b:85,  lbl:`Terminées: ${done}` },
+            { count:prog, r:0,   g:140, b:195, lbl:`En cours: ${prog}` },
+            { count:pend, r:195, g:55,  b:55,  lbl:`En attente: ${pend}` },
+        ];
+        let ox = 0;
+        segs.forEach(s => {
+            if (s.count > 0) {
+                const sw = (s.count / n) * bw;
+                doc.setFillColor(s.r, s.g, s.b);
+                doc.rect(bx + ox, by, sw, bh, 'F');
+                ox += sw;
+            }
+        });
+        // Round ends
+        doc.setFillColor(0, 155, 85);
+
+        let lx = bx;
+        const ly = by + bh + 4;
+        segs.forEach(s => {
+            doc.setFillColor(s.r, s.g, s.b);
+            doc.roundedRect(lx, ly, 3.5, 3.5, 0.5, 0.5, 'F');
+            doc.setTextColor(50, 70, 110);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(6.5);
+            doc.text(s.lbl, lx + 5.5, ly + 3);
+            lx += 58;
+        });
+        y += 35;
+    }
+
+    // ── TABLE TITLE ─────────────────────────────────────
+    doc.setTextColor(26, 84, 144);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('DÉTAIL DES MISSIONS', margin, y + 2);
+    doc.setFillColor(255, 200, 0);
+    doc.rect(margin, y + 4.5, 44, 0.8, 'F');
+    y += 10;
+
+    // ── MISSIONS TABLE ──────────────────────────────────
+    const sLabel = av => {
+        av = +av;
+        if (av === 0)   return 'Non commencé';
+        if (av < 50)    return 'En cours';
+        if (av < 100)   return 'En avancement';
+        return 'Terminé';
+    };
+
+    const rows = filtered.map(m => [
+        m.date ? new Date(m.date+'T00:00:00').toLocaleDateString('fr-FR') : '—',
+        m.chef   || '—',
+        m.client || '—',
+        m.type   || '—',
+        m.desc ? (m.desc.length > 38 ? m.desc.slice(0,36)+'…' : m.desc) : '—',
+        `${m.av}%`,
+        sLabel(m.av),
+    ]);
+
+    if (!rows.length) {
+        doc.setTextColor(150, 170, 200);
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9);
+        doc.text('Aucune mission dans ce rapport.', W/2, y + 10, { align:'center' });
+    } else {
+        doc.autoTable({
+            startY: y,
+            head: [['Date','Chef','Client','Type','Description','%','Statut']],
+            body: rows,
+            margin: { left:margin, right:margin },
+            styles: {
+                fontSize:7.5, cellPadding:2.8,
+                textColor:[25,40,65],
+                lineColor:[200,215,240], lineWidth:0.25,
+                font:'helvetica', overflow:'ellipsize',
+            },
+            headStyles: {
+                fillColor:[26,84,144], textColor:[255,255,255],
+                fontStyle:'bold', fontSize:8, halign:'center',
+            },
+            alternateRowStyles: { fillColor:[240,246,255] },
+            columnStyles: {
+                0:{ cellWidth:20, halign:'center' },
+                1:{ cellWidth:30 },
+                2:{ cellWidth:30 },
+                3:{ cellWidth:22 },
+                4:{ cellWidth:48 },
+                5:{ cellWidth:12, halign:'center', fontStyle:'bold' },
+                6:{ cellWidth:20, halign:'center' },
+            },
+            didParseCell: data => {
+                if (data.section !== 'body') return;
+                if (data.column.index === 5) {
+                    const pct = parseInt(data.cell.raw);
+                    data.cell.styles.textColor =
+                        pct === 100 ? [0,145,80] : pct > 0 ? [0,125,185] : [185,50,50];
+                }
+                if (data.column.index === 6) {
+                    const t = data.cell.raw;
+                    data.cell.styles.textColor =
+                        t === 'Terminé'       ? [0,145,80]
+                      : t === 'Non commencé'  ? [185,50,50]
+                      : [0,125,185];
+                }
+            },
+        });
+    }
+
+    // ── FOOTER (all pages) ──────────────────────────────
+    const pages = doc.internal.getNumberOfPages();
+    const pH    = doc.internal.pageSize.getHeight();
+    for (let p = 1; p <= pages; p++) {
+        doc.setPage(p);
+        doc.setFillColor(26, 84, 144);
+        doc.rect(0, pH - 10, W, 10, 'F');
+        doc.setFillColor(255, 200, 0);
+        doc.rect(0, pH - 10, 6, 10, 'F');
+        doc.setTextColor(170, 205, 255);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.text('Généré par DEWEB — Gestionnaire de Missions', margin + 2, pH - 3.5);
+        doc.setTextColor(255, 200, 0);
+        doc.text(`Page ${p} / ${pages}`, W - margin, pH - 3.5, { align:'right' });
+    }
+
+    doc.save(`rapport_missions_${new Date().toISOString().slice(0,10)}.pdf`);
+    closePdfModal();
+    toast('📄 Rapport PDF généré avec succès!');
+}
+
+// ── CHEFS ─────────────────────────────────────────────────────
+const DEFAULT_CHEFS = [
+    { id:'c1', name:'DRISS MOUBAREK', specialite:'Chef de Chantier', tel:'' },
+    { id:'c2', name:'LEHCEN BERKA',   specialite:'Chef de Chantier', tel:'' },
+    { id:'c3', name:'ABDELGHANI',     specialite:'Chef de Chantier', tel:'' },
+    { id:'c4', name:'MOHAMED',        specialite:'Chef de Chantier', tel:'' },
+];
+let chefs = JSON.parse(localStorage.getItem('dw_chefs') || 'null')
+            || DEFAULT_CHEFS.map(c => ({...c}));
+
+const saveChefs = () => localStorage.setItem('dw_chefs', JSON.stringify(chefs));
+
+function chefInitials(name) {
+    return name.trim().split(/\s+/).slice(0,2).map(w => w[0] || '').join('').toUpperCase() || '?';
+}
+
+function rebuildChefDropdowns() {
+    const opts = chefs.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+
+    const a = $('addChefSel'),  av = a.value;
+    a.innerHTML = '<option value="">— Sélectionner —</option>' + opts;
+    if (av) a.value = av;
+
+    const e = $('editChefSel'), ev = e.value;
+    e.innerHTML = opts;
+    if (ev) e.value = ev;
+
+    const f = $('fChef'), fv = f.value;
+    f.innerHTML = '<option value="">Tous les chefs</option>' + opts;
+    if (fv) f.value = fv;
+}
+
+function renderChefs() {
+    const container = $('chefList');
+    if (!chefs.length) {
+        container.innerHTML = '<div class="chef-empty">👷 Aucun chef — ajoutez le premier!</div>';
+        return;
+    }
+    container.innerHTML = chefs.map((c, i) => {
+        const cnt = missions.filter(m => m.chef === c.name).length;
+        return `
+        <div class="chef-card" style="animation-delay:${i * .06}s">
+            <div class="chef-avatar">${chefInitials(c.name)}</div>
+            <div class="chef-info">
+                <div class="chef-name">${esc(c.name)}</div>
+                <div class="chef-spec">🔧 ${esc(c.specialite || '—')}</div>
+                ${c.tel ? `<div class="chef-tel">📱 ${esc(c.tel)}</div>` : ''}
+                <div class="chef-miss">🎯 ${cnt} mission(s)</div>
+            </div>
+            <div class="chef-actions">
+                ${!currentUser || currentUser.role === 'Admin' ? `<button class="btn btn-blue btn-sm" onclick="openEditChef('${c.id}')">✏️ Modifier</button>` : ''}
+                ${!currentUser || currentUser.role === 'Admin' ? `<button class="btn btn-red btn-sm" onclick="delChef('${c.id}')">🗑️ Supprimer</button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+$('chefForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const fd   = new FormData(e.target);
+    const name = fd.get('name').trim().toUpperCase();
+    if (!name) return;
+    if (chefs.some(c => c.name === name)) { toast('⚠️ Ce chef existe déjà!'); return; }
+    chefs.push({ id:'c'+Date.now(), name, specialite:fd.get('specialite').trim(), tel:fd.get('tel').trim() });
+    saveChefs(); rebuildChefDropdowns(); renderChefs();
+    e.target.reset();
+    toast('✅ Chef ajouté avec succès!');
+});
+
+function openEditChef(id) {
+    const c = chefs.find(c => c.id === id);
+    if (!c) return;
+    const f = $('chefEditForm');
+    f.querySelector('[name=id]').value         = c.id;
+    f.querySelector('[name=name]').value       = c.name;
+    f.querySelector('[name=specialite]').value = c.specialite || '';
+    f.querySelector('[name=tel]').value        = c.tel || '';
+    $('chefEditOverlay').classList.add('on');
+}
+
+const closeChefModal = () => $('chefEditOverlay').classList.remove('on');
+$('chefMClose').onclick  = closeChefModal;
+$('chefMCancel').onclick = closeChefModal;
+$('chefEditOverlay').onclick = e => { if (e.target === $('chefEditOverlay')) closeChefModal(); };
+
+$('chefEditForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const fd      = new FormData(e.target);
+    const id      = fd.get('id');
+    const idx     = chefs.findIndex(c => c.id === id);
+    if (idx < 0) return;
+    const oldName = chefs[idx].name;
+    const newName = fd.get('name').trim().toUpperCase();
+    if (!newName) return;
+    if (chefs.some((c, i) => i !== idx && c.name === newName)) { toast('⚠️ Ce nom existe déjà!'); return; }
+    chefs[idx] = { ...chefs[idx], name:newName, specialite:fd.get('specialite').trim(), tel:fd.get('tel').trim() };
+    if (oldName !== newName) {
+        missions.forEach(m => { if (m.chef === oldName) m.chef = newName; });
+        save(); updateKPIs(); render();
+    }
+    saveChefs(); closeChefModal(); rebuildChefDropdowns(); renderChefs();
+    toast('💾 Chef mis à jour!');
+});
+
+function delChef(id) {
+    const c = chefs.find(c => c.id === id);
+    if (!c) return;
+    const cnt = missions.filter(m => m.chef === c.name).length;
+    const msg = cnt > 0
+        ? `Supprimer "${c.name}" ?\nCe chef est assigné à ${cnt} mission(s) — il sera retiré de ces missions.`
+        : `Supprimer "${c.name}" définitivement ?`;
+    if (!confirm(msg)) return;
+    missions.forEach(m => { if (m.chef === c.name) m.chef = ''; });
+    chefs = chefs.filter(c => c.id !== id);
+    save(); saveChefs(); updateKPIs(); render(); rebuildChefDropdowns(); renderChefs();
+    toast('🗑️ Chef supprimé.');
+}
+
+// PARTICLES
+function spawnParticles() {
+    const colors = ['#1a5490','#ffc800','#2270c0','#ffd740','#00c8ff'];
+    for (let i = 0; i < 24; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const size = 2 + Math.random() * 4;
+        p.style.cssText = `
+            width:${size}px; height:${size}px;
+            left:${Math.random()*100}vw;
+            background:${colors[Math.floor(Math.random()*colors.length)]};
+            animation-duration:${9+Math.random()*13}s;
+            animation-delay:${Math.random()*12}s;
+        `;
+        document.getElementById('bg-wrap').appendChild(p);
+    }
+}
+
+// DATE
+function setDate() {
+    $('hDate').textContent = new Date().toLocaleDateString('fr-FR',{
+        weekday:'long', year:'numeric', month:'long', day:'numeric'
+    });
+}
+
+// UTILS
+function $(id)  { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(d) {
+    if (!d) return '';
+    return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{
+        day:'2-digit', month:'short', year:'numeric'
+    });
+}
+
+// ── EMAIL NOTIFICATIONS ───────────────────────────────────
+let emailSettings = JSON.parse(localStorage.getItem('dw_email_settings') || 'null') || {
+    email:'', onAdd:true, onEdit:true, onDone:true,
+    daily:false, weekly:false, overdue:true
+};
+const saveEmailSettingsLS = () => localStorage.setItem('dw_email_settings', JSON.stringify(emailSettings));
+
+let emailLog = JSON.parse(localStorage.getItem('dw_email_log') || '[]');
+const saveEmailLog = () => localStorage.setItem('dw_email_log', JSON.stringify(emailLog));
+
+function loadNotifUI() {
+    $('notifEmail').value = emailSettings.email;
+    $('nOnAdd').checked   = emailSettings.onAdd;
+    $('nOnEdit').checked  = emailSettings.onEdit;
+    $('nOnDone').checked  = emailSettings.onDone;
+    $('nDaily').checked   = emailSettings.daily;
+    $('nWeekly').checked  = emailSettings.weekly;
+    $('nOverdue').checked = emailSettings.overdue;
+    renderEmailLog();
+}
+
+function saveNotifSettings() {
+    emailSettings.email   = $('notifEmail').value.trim();
+    emailSettings.onAdd   = $('nOnAdd').checked;
+    emailSettings.onEdit  = $('nOnEdit').checked;
+    emailSettings.onDone  = $('nOnDone').checked;
+    emailSettings.daily   = $('nDaily').checked;
+    emailSettings.weekly  = $('nWeekly').checked;
+    emailSettings.overdue = $('nOverdue').checked;
+    saveEmailSettingsLS();
+    toast('💾 Paramètres de notifications sauvegardés!');
+}
+
+function buildEmailHTML(type, data) {
+    const now = new Date().toLocaleString('fr-FR');
+    const css = `
+        body{margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif}
+        .wrap{max-width:600px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.13)}
+        .hdr{background:linear-gradient(135deg,#1a5490 0%,#2270c0 100%);padding:28px 36px}
+        .logo{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+        .logo-ico{width:46px;height:46px;background:#ffc800;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#1a5490}
+        .logo-name{color:#fff;font-size:21px;font-weight:800;letter-spacing:2px}
+        .logo-sub{color:rgba(255,255,255,.6);font-size:11px;letter-spacing:1px}
+        .hdr-title{color:#fff;font-size:19px;font-weight:700}
+        .hdr-sub{color:rgba(255,255,255,.65);font-size:13px;margin-top:4px}
+        .accent{height:4px;background:linear-gradient(90deg,#ffc800,#ffd740,#ffc800)}
+        .body{padding:28px 36px}
+        .kpi-row{display:flex;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+        .kpi-box{flex:1;min-width:90px;background:#f8fafc;border-radius:10px;padding:14px;text-align:center;border-top:3px solid #1a5490}
+        .kpi-val{font-size:24px;font-weight:800;color:#1a5490}
+        .kpi-lbl{font-size:10px;color:#64748b;margin-top:3px;letter-spacing:.5px;text-transform:uppercase}
+        .mc{background:#f8fafc;border-radius:10px;padding:18px;margin-bottom:14px;border-left:4px solid #1a5490}
+        .mc.done{border-left-color:#16a34a}
+        .mc.edit{border-left-color:#ffc800}
+        .mc-row{display:flex;gap:8px;margin-bottom:7px;font-size:14px}
+        .mc-lbl{color:#64748b;min-width:110px;flex-shrink:0}
+        .mc-val{color:#0f172a;font-weight:600}
+        .bar-wrap{background:#e2e8f0;border-radius:99px;height:8px;margin:12px 0 4px;overflow:hidden}
+        .bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#1a5490,#2270c0)}
+        .bar-fill.done{background:linear-gradient(90deg,#16a34a,#22c55e)}
+        .ftr{background:#f8fafc;padding:18px 36px;border-top:1px solid #e2e8f0;text-align:center}
+        .ftr p{color:#94a3b8;font-size:11px;line-height:1.7;margin:0}
+        table{width:100%;border-collapse:collapse;margin-bottom:16px}
+        th{background:#1a5490;color:#fff;padding:10px 12px;font-size:12px;text-align:left;letter-spacing:.5px}
+        td{padding:9px 12px;font-size:13px;border-bottom:1px solid #e2e8f0}
+        tr:last-child td{border-bottom:none}
+        tr:nth-child(even) td{background:#f8fafc}
+        .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+        .b-done{background:#dcfce7;color:#16a34a}
+        .b-mid{background:#e0f2fe;color:#0369a1}
+        .b-low{background:#fef9c3;color:#ca8a04}
+        .b-none{background:#fee2e2;color:#dc2626}
+        h3{color:#1a5490;font-size:14px;margin:16px 0 10px;letter-spacing:.5px}
+    `;
+
+    const headerBlock = (title, sub) => `
+        <div class="logo">
+            <div class="logo-ico">DW</div>
+            <div><div class="logo-name">DEWEB</div><div class="logo-sub">Gestionnaire de Missions</div></div>
+        </div>
+        <div class="hdr-title">${title}</div>
+        <div class="hdr-sub">${sub}</div>`;
+
+    const footer = `<div class="ftr"><p>Email généré automatiquement par DEWEB — Gestionnaire de Missions<br>Envoyé le ${now}</p></div>`;
+
+    let hdr = '', body = '';
+
+    if (type === 'test') {
+        hdr  = headerBlock('🧪 Email de Test', 'Votre connexion est opérationnelle');
+        body = `<div class="mc">
+            <div class="mc-row"><span class="mc-lbl">Statut:</span><span class="mc-val">✅ OK</span></div>
+            <div class="mc-row"><span class="mc-lbl">Destination:</span><span class="mc-val">${esc(emailSettings.email)}</span></div>
+            <div class="mc-row"><span class="mc-lbl">Date:</span><span class="mc-val">${now}</span></div>
+        </div>
+        <p style="color:#64748b;font-size:13px;line-height:1.7">Votre système de notifications DEWEB est configuré. Vous recevrez les alertes pour les événements activés.</p>`;
+
+    } else if (type === 'add') {
+        const m = data;
+        hdr  = headerBlock('✅ Nouvelle Mission Créée', `Assignée à ${esc(m.chef)}`);
+        body = `<div class="mc">
+            <div class="mc-row"><span class="mc-lbl">👷 Chef:</span><span class="mc-val">${esc(m.chef)}</span></div>
+            <div class="mc-row"><span class="mc-lbl">🏢 Client:</span><span class="mc-val">${esc(m.client)}</span></div>
+            <div class="mc-row"><span class="mc-lbl">⚡ Type:</span><span class="mc-val">${esc(m.type)}</span></div>
+            <div class="mc-row"><span class="mc-lbl">📅 Date:</span><span class="mc-val">${fmtDate(m.date)}</span></div>
+            ${m.desc ? `<div class="mc-row"><span class="mc-lbl">📝 Description:</span><span class="mc-val">${esc(m.desc)}</span></div>` : ''}
+            <div class="bar-wrap"><div class="bar-fill" style="width:${m.av}%"></div></div>
+            <div style="font-size:12px;color:#64748b">Avancement initial: ${m.av}%</div>
+        </div>`;
+
+    } else if (type === 'edit') {
+        const { m, prev } = data;
+        hdr  = headerBlock('✏️ Mission Modifiée', `Mise à jour par ${currentUser ? esc(currentUser.name) : 'DEWEB'}`);
+        body = `<div class="mc edit">
+            <div class="mc-row"><span class="mc-lbl">👷 Chef:</span><span class="mc-val">${esc(m.chef)}</span></div>
+            <div class="mc-row"><span class="mc-lbl">🏢 Client:</span><span class="mc-val">${esc(m.client)}</span></div>
+            <div class="mc-row"><span class="mc-lbl">⚡ Type:</span><span class="mc-val">${esc(m.type)}</span></div>
+            ${prev && prev.av !== m.av ? `<div class="mc-row"><span class="mc-lbl">📊 Avancement:</span><span class="mc-val">${prev.av}% → <strong>${m.av}%</strong></span></div>` : `<div class="mc-row"><span class="mc-lbl">📊 Avancement:</span><span class="mc-val">${m.av}%</span></div>`}
+            <div class="bar-wrap"><div class="bar-fill${+m.av===100?' done':''}" style="width:${m.av}%"></div></div>
+            <div style="font-size:12px;color:#64748b">${statusOf(+m.av).label}</div>
+        </div>`;
+
+    } else if (type === 'done') {
+        const m = data;
+        hdr  = headerBlock('🏁 Mission Terminée!', `Félicitations — complétée par ${esc(m.chef)}`);
+        body = `<div style="text-align:center;padding:18px 0">
+            <div style="font-size:52px;margin-bottom:10px">🎉</div>
+            <div style="font-size:19px;font-weight:800;color:#1a5490;margin-bottom:6px">Mission accomplie!</div>
+        </div>
+        <div class="mc done">
+            <div class="mc-row"><span class="mc-lbl">👷 Chef:</span><span class="mc-val">${esc(m.chef)}</span></div>
+            <div class="mc-row"><span class="mc-lbl">🏢 Client:</span><span class="mc-val">${esc(m.client)}</span></div>
+            <div class="mc-row"><span class="mc-lbl">⚡ Type:</span><span class="mc-val">${esc(m.type)}</span></div>
+            <div class="mc-row"><span class="mc-lbl">📅 Date:</span><span class="mc-val">${fmtDate(m.date)}</span></div>
+            <div class="bar-wrap"><div class="bar-fill done" style="width:100%"></div></div>
+            <div style="font-size:12px;color:#16a34a;font-weight:700">✅ Terminé — 100%</div>
+        </div>`;
+
+    } else if (type === 'daily') {
+        const n = missions.length;
+        const done = missions.filter(m=>+m.av===100).length;
+        const prog = missions.filter(m=>+m.av>0&&+m.av<100).length;
+        const pend = missions.filter(m=>+m.av===0).length;
+        const avg  = n ? Math.round(missions.reduce((s,m)=>s+(+m.av),0)/n) : 0;
+        const crit = missions.filter(m=>+m.av<50&&m.date&&m.date<today());
+        hdr  = headerBlock('📊 Rapport Quotidien', new Date().toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}));
+        body = `<div class="kpi-row">
+            <div class="kpi-box"><div class="kpi-val">${n}</div><div class="kpi-lbl">Total</div></div>
+            <div class="kpi-box"><div class="kpi-val" style="color:#16a34a">${done}</div><div class="kpi-lbl">Terminées</div></div>
+            <div class="kpi-box"><div class="kpi-val" style="color:#ffc800">${prog}</div><div class="kpi-lbl">En cours</div></div>
+            <div class="kpi-box"><div class="kpi-val" style="color:#ef4444">${pend}</div><div class="kpi-lbl">En attente</div></div>
+            <div class="kpi-box"><div class="kpi-val">${avg}%</div><div class="kpi-lbl">Avancement</div></div>
+        </div>
+        ${crit.length ? `<h3>⚠️ Missions critiques (${crit.length})</h3>
+        <table><thead><tr><th>Chef</th><th>Client</th><th>Type</th><th>Avancement</th></tr></thead>
+        <tbody>${crit.map(m=>`<tr><td>${esc(m.chef)}</td><td>${esc(m.client)}</td><td>${esc(m.type)}</td><td><span class="badge b-none">${m.av}%</span></td></tr>`).join('')}</tbody></table>`
+        : '<p style="color:#16a34a;font-weight:600;font-size:14px">✅ Aucune mission critique aujourd\'hui!</p>'}`;
+
+    } else if (type === 'weekly') {
+        const n = missions.length;
+        const done = missions.filter(m=>+m.av===100).length;
+        const prog = missions.filter(m=>+m.av>0&&+m.av<100).length;
+        const avg  = n ? Math.round(missions.reduce((s,m)=>s+(+m.av),0)/n) : 0;
+        hdr  = headerBlock('📈 Rapport Hebdomadaire', 'Bilan complet de la semaine');
+        body = `<div class="kpi-row">
+            <div class="kpi-box"><div class="kpi-val">${n}</div><div class="kpi-lbl">Total</div></div>
+            <div class="kpi-box"><div class="kpi-val" style="color:#16a34a">${done}</div><div class="kpi-lbl">Terminées</div></div>
+            <div class="kpi-box"><div class="kpi-val" style="color:#ffc800">${prog}</div><div class="kpi-lbl">En cours</div></div>
+            <div class="kpi-box"><div class="kpi-val">${avg}%</div><div class="kpi-lbl">Avancement moy.</div></div>
+        </div>
+        <h3>📋 Toutes les missions</h3>
+        <table><thead><tr><th>Chef</th><th>Client</th><th>Type</th><th>Date</th><th>Avancement</th></tr></thead>
+        <tbody>${missions.map(m=>{
+            const av=+m.av,cls=av===100?'done':av>=50?'mid':av>0?'low':'none';
+            return `<tr><td>${esc(m.chef)}</td><td>${esc(m.client)}</td><td>${esc(m.type)}</td><td>${fmtDate(m.date)}</td><td><span class="badge b-${cls}">${av}%</span></td></tr>`;
+        }).join('')}</tbody></table>`;
+
+    } else if (type === 'overdue') {
+        const list = data || [];
+        hdr  = headerBlock('⏰ Alerte Missions en Retard', `${list.length} mission(s) non démarrée(s)`);
+        body = `<p style="color:#dc2626;font-weight:600;margin-bottom:14px;font-size:14px">⚠️ Les missions suivantes n'ont pas encore démarré:</p>
+        <table><thead><tr><th>Chef</th><th>Client</th><th>Type</th><th>Date prévue</th></tr></thead>
+        <tbody>${list.map(m=>`<tr><td>${esc(m.chef)}</td><td>${esc(m.client)}</td><td>${esc(m.type)}</td><td>${fmtDate(m.date)}</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head>
+<body><div style="padding:24px 12px;background:#f0f4f8">
+<div class="wrap">
+    <div class="hdr">${hdr}</div>
+    <div class="accent"></div>
+    <div class="body">${body}</div>
+    ${footer}
+</div></div></body></html>`;
+}
+
+let _pendingEmail = null; // { type, data, subj }
+
+function showEmailPreview(type, data, subj) {
+    _pendingEmail = { type, data, subj };
+    $('epFrame').srcdoc = buildEmailHTML(type, data);
+    $('epTitle').textContent = subj;
+    $('epSend').style.display = '';
+    $('emailPreviewOverlay').classList.add('on');
+}
+
+const closeEmailPreview = () => {
+    $('emailPreviewOverlay').classList.remove('on');
+    $('epSend').style.display = '';
+    _pendingEmail = null;
+};
+$('epClose').onclick   = closeEmailPreview;
+$('epCancel').onclick  = closeEmailPreview;
+$('emailPreviewOverlay').onclick = e => { if (e.target === $('emailPreviewOverlay')) closeEmailPreview(); };
+
+$('epSend').onclick = () => {
+    if (!_pendingEmail) return;
+    commitSendEmail(_pendingEmail.type, _pendingEmail.data, _pendingEmail.subj);
+    closeEmailPreview();
+};
+
+function commitSendEmail(type, data, subj) {
+    const to = emailSettings.email;
+    if (!to) { toast('⚠️ Configurez un email de destination dans les paramètres.'); return; }
+    const entry = {
+        id: Date.now().toString(), type, subj, to,
+        sentAt: new Date().toISOString(),
+        html: buildEmailHTML(type, data)
+    };
+    emailLog.unshift(entry);
+    if (emailLog.length > 50) emailLog = emailLog.slice(0, 50);
+    saveEmailLog();
+    renderEmailLog();
+    toast('📨 Email envoyé (simulation) → ' + to);
+}
+
+function triggerEmail(type, data) {
+    const map = { add:'onAdd', edit:'onEdit', done:'onDone' };
+    if (!emailSettings[map[type]]) return;
+    if (!emailSettings.email) return;
+    const subj = {
+        add:  `✅ Nouvelle mission — ${data.chef} / ${data.client}`,
+        edit: `✏️ Mission modifiée — ${data.m ? data.m.chef : ''} / ${data.m ? data.m.client : ''}`,
+        done: `🏁 Mission terminée — ${data.chef} / ${data.client}`,
+    };
+    commitSendEmail(type, data, subj[type]);
+}
+
+function sendTestEmail() {
+    if (!$('notifEmail').value.trim() && !emailSettings.email) {
+        toast('⚠️ Entrez d\'abord un email de destination.'); return;
+    }
+    const addr = $('notifEmail').value.trim() || emailSettings.email;
+    emailSettings.email = addr;
+    showEmailPreview('test', {}, '🧪 Email de test DEWEB');
+}
+
+function sendDailyReport() {
+    if (!emailSettings.email) { toast('⚠️ Configurez un email dans les paramètres.'); return; }
+    showEmailPreview('daily', null, `📊 Rapport quotidien — ${new Date().toLocaleDateString('fr-FR')}`);
+}
+
+function sendWeeklyReport() {
+    if (!emailSettings.email) { toast('⚠️ Configurez un email dans les paramètres.'); return; }
+    showEmailPreview('weekly', null, `📈 Rapport hebdomadaire — ${new Date().toLocaleDateString('fr-FR')}`);
+}
+
+function checkOverdue() {
+    if (!emailSettings.email) { toast('⚠️ Configurez un email dans les paramètres.'); return; }
+    const threeDaysAgo = new Date(Date.now() - 3*86400000).toISOString().slice(0,10);
+    const overdue = missions.filter(m => +m.av === 0 && m.date && m.date < threeDaysAgo);
+    if (!overdue.length) { toast('✅ Aucune mission en retard!'); return; }
+    showEmailPreview('overdue', overdue, `⏰ Alerte retard — ${overdue.length} mission(s)`);
+}
+
+function renderEmailLog() {
+    const c = $('emailLogContainer');
+    if (!emailLog.length) {
+        c.innerHTML = '<div class="email-log-empty">📭 Aucun email simulé pour l\'instant.</div>';
+        return;
+    }
+    const ico = { add:'✅', edit:'✏️', done:'🏁', daily:'📊', weekly:'📈', overdue:'⏰', test:'🧪' };
+    c.innerHTML = `<div class="email-log-list">
+        ${emailLog.slice(0,30).map(e => `
+        <div class="email-log-item">
+            <div class="email-log-ico">${ico[e.type] || '📧'}</div>
+            <div class="email-log-info">
+                <div class="email-log-subj">${esc(e.subj)}</div>
+                <div class="email-log-meta">À: ${esc(e.to)} — ${new Date(e.sentAt).toLocaleString('fr-FR')}</div>
+            </div>
+            <div class="email-log-btns">
+                <button class="btn btn-blue btn-sm" onclick="previewLogEmail('${e.id}')">👁️ Voir</button>
+                <button class="btn btn-blue btn-sm" onclick="resendEmail('${e.id}')">↩️</button>
+            </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function previewLogEmail(id) {
+    const e = emailLog.find(x => x.id === id);
+    if (!e) return;
+    $('epFrame').srcdoc = e.html;
+    $('epTitle').textContent = e.subj;
+    $('epSend').style.display = 'none';
+    _pendingEmail = null;
+    $('emailPreviewOverlay').classList.add('on');
+}
+
+function resendEmail(id) {
+    const e = emailLog.find(x => x.id === id);
+    if (!e) return;
+    emailLog.unshift({ ...e, id: Date.now().toString(), sentAt: new Date().toISOString() });
+    if (emailLog.length > 50) emailLog = emailLog.slice(0, 50);
+    saveEmailLog(); renderEmailLog();
+    toast('↩️ Email renvoyé (simulation) → ' + e.to);
+}
+
+function clearEmailLog() {
+    if (!emailLog.length) return;
+    if (!confirm('Effacer tout l\'historique des emails?')) return;
+    emailLog = []; saveEmailLog(); renderEmailLog();
+    toast('🗑️ Historique effacé.');
+}
+
+// ── AUTH ──────────────────────────────────────────────────
+function hashPwd(pwd) {
+    let h = 5381;
+    for (let i = 0; i < pwd.length; i++) {
+        h = ((h << 5) + h) + pwd.charCodeAt(i);
+        h = h & h;
+    }
+    return 'dw' + Math.abs(h).toString(36);
+}
+
+const DEFAULT_USERS = [
+    { id:'u1', name:'Administrateur', email:'admin@deweb.ma',
+      password: hashPwd('admin123'), role:'Admin',
+      createdAt: new Date().toISOString() }
+];
+
+let users = JSON.parse(localStorage.getItem('dw_users') || 'null') || DEFAULT_USERS.map(u => ({...u}));
+const saveUsers = () => localStorage.setItem('dw_users', JSON.stringify(users));
+
+function initAuth() {
+    const sess = JSON.parse(localStorage.getItem('dw_session') || 'null');
+    if (sess && users.find(u => u.id === sess.userId)) {
+        currentUser = sess;
+        showApp();
+    } else {
+        $('authOverlay').classList.remove('hidden');
+    }
+}
+
+function showApp() {
+    $('authOverlay').classList.add('hidden');
+    updateHeaderUser();
+    applyRolePermissions();
+    $('addDate').value = today();
+    setDate();
+    setInterval(setDate, 60000);
+    spawnParticles();
+    rebuildChefDropdowns();
+    renderChefs();
+    updateKPIs();
+    render();
+    loadNotifUI();
+}
+
+function updateHeaderUser() {
+    const u = currentUser;
+    if (!u) return;
+    const initials = u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    $('hAvatar').textContent = initials;
+    $('hUname').textContent  = u.name;
+    const badge = $('hRoleBadge');
+    badge.textContent = u.role.toUpperCase();
+    badge.className   = 'h-role-badge role-' + (u.role === 'Admin' ? 'admin' : u.role === 'Chef' ? 'chef' : 'dir');
+}
+
+function applyRolePermissions() {
+    const role = currentUser ? currentUser.role : '';
+    // Directeur: hide add-mission section, chef section, export/import buttons
+    const isDir = role === 'Directeur';
+    const isChef = role === 'Chef';
+
+    $('addMissionSection').classList.toggle('role-hide', isDir);
+    $('chefSection').classList.toggle('role-hide', isDir || isChef);
+
+    // Hide CSV export/import for non-admins
+    const exportBtn = $('exportBtn');
+    const importBtn = $('importBtn');
+    if (exportBtn) exportBtn.classList.toggle('role-hide', isDir);
+    if (importBtn) importBtn.classList.toggle('role-hide', isDir);
+}
+
+function doLogout() {
+    if (!confirm('Se déconnecter?')) return;
+    currentUser = null;
+    localStorage.removeItem('dw_session');
+    $('authOverlay').classList.remove('hidden');
+    $('panelLogin').classList.add('active');
+    $('panelReg').classList.remove('active');
+    $('tabLogin').classList.add('active');
+    $('tabReg').classList.remove('active');
+}
+
+function switchAuthTab(tab) {
+    const isLogin = tab === 'login';
+    $('panelLogin').classList.toggle('active', isLogin);
+    $('panelReg').classList.toggle('active', !isLogin);
+    $('tabLogin').classList.toggle('active', isLogin);
+    $('tabReg').classList.toggle('active', !isLogin);
+    $('loginErr').classList.remove('vis');
+    $('regErr').classList.remove('vis');
+}
+
+function showAuthErr(id, msg) {
+    const el = $(id);
+    el.textContent = msg;
+    el.classList.add('vis');
+}
+
+function doLogin() {
+    const email = $('loginEmail').value.trim().toLowerCase();
+    const pwd   = $('loginPwd').value;
+    $('loginErr').classList.remove('vis');
+
+    if (!email || !pwd) { showAuthErr('loginErr', '⚠️ Veuillez remplir tous les champs.'); return; }
+
+    const u = users.find(x => x.email.toLowerCase() === email);
+    if (!u || u.password !== hashPwd(pwd)) {
+        showAuthErr('loginErr', '❌ Email ou mot de passe incorrect.');
+        return;
+    }
+    const sess = { userId: u.id, name: u.name, email: u.email, role: u.role };
+    localStorage.setItem('dw_session', JSON.stringify(sess));
+    currentUser = sess;
+    $('loginPwd').value = '';
+    showApp();
+}
+
+function doRegister() {
+    const name  = $('regName').value.trim();
+    const email = $('regEmail').value.trim().toLowerCase();
+    const pwd   = $('regPwd').value;
+    const pwd2  = $('regPwd2').value;
+    const selRole = document.querySelector('.role-opt.sel');
+    const role  = selRole ? selRole.dataset.role : 'Chef';
+    $('regErr').classList.remove('vis');
+
+    if (!name || !email || !pwd || !pwd2) { showAuthErr('regErr', '⚠️ Veuillez remplir tous les champs.'); return; }
+    if (pwd.length < 6) { showAuthErr('regErr', '⚠️ Le mot de passe doit contenir au moins 6 caractères.'); return; }
+    if (pwd !== pwd2)   { showAuthErr('regErr', '❌ Les mots de passe ne correspondent pas.'); return; }
+    if (users.find(u => u.email.toLowerCase() === email)) { showAuthErr('regErr', '⚠️ Cet email est déjà utilisé.'); return; }
+
+    const newUser = { id:'u'+Date.now(), name, email, password: hashPwd(pwd), role, createdAt: new Date().toISOString() };
+    users.push(newUser);
+    saveUsers();
+
+    const sess = { userId: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role };
+    localStorage.setItem('dw_session', JSON.stringify(sess));
+    currentUser = sess;
+    $('regPwd').value = ''; $('regPwd2').value = '';
+    toast('🎉 Compte créé avec succès!');
+    showApp();
+}
+
+function selectRole(el) {
+    document.querySelectorAll('.role-opt').forEach(o => o.classList.remove('sel'));
+    el.classList.add('sel');
+}
+
+// Allow Enter key on login fields
+['loginEmail','loginPwd'].forEach(id => {
+    $(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+});
+['regName','regEmail','regPwd','regPwd2'].forEach(id => {
+    $(id).addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+});
+
+// INIT
+initAuth();
+</script>
+</body>
+</html>
