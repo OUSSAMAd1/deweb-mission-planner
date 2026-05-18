@@ -697,14 +697,16 @@
             gap:14px;
         }
 
-        .chef-card {
+.chef-card {
             background:var(--glass); border:1px solid var(--glass-b);
-            border-radius:16px; padding:18px 20px;
-            display:flex; align-items:center; gap:14px;
+            border-radius:16px; padding:28px 32px;
+            display:flex; align-items:center; gap:24px;
             position:relative; overflow:hidden;
             animation:cardIn .45s ease both;
             transition:transform .35s cubic-bezier(.175,.885,.32,1.275),
                         border-color .3s, box-shadow .3s;
+            min-height:120px;
+}
         }
         .chef-card::before {
             content:''; position:absolute; top:0; left:0; right:0; height:2px;
